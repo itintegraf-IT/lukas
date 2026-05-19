@@ -1,0 +1,2149 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Integraf — Výrobní KPI</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#0f1117;
+  --surface:#181c27;
+  --surface2:#1e2330;
+  --surface3:#252a38;
+  --border:rgba(255,255,255,0.07);
+  --border2:rgba(255,255,255,0.12);
+  --text:#e8e6f0;
+  --text2:#9b98b0;
+  --text3:#5c5a72;
+  --accent:#4f8ef7;
+  --accent2:#6ba3ff;
+  --green:#3ecf8e;
+  --orange:#f59e0b;
+  --red:#ef4444;
+  --green-bg:rgba(62,207,142,0.1);
+  --orange-bg:rgba(245,158,11,0.1);
+  --red-bg:rgba(239,68,68,0.1);
+  --mono:'IBM Plex Mono',monospace;
+  --sans:'DM Sans',sans-serif;
+  --r:10px;
+  --r-sm:6px;
+}
+
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh}
+
+/* ── NAV ── */
+nav{
+  position:sticky;top:0;z-index:100;
+  background:rgba(15,17,23,0.92);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:0;
+  height:52px;padding:0 1.5rem;
+}
+.nav-logo{
+  font-family:var(--mono);font-size:13px;font-weight:500;
+  color:var(--text);letter-spacing:0.08em;
+  margin-right:2rem;white-space:nowrap;
+}
+.nav-logo span{color:var(--accent)}
+.nav-tabs{display:flex;gap:2px;overflow-x:auto;flex:1}
+.nav-tab{
+  padding:6px 14px;font-size:13px;font-weight:500;
+  border:none;background:none;color:var(--text2);
+  cursor:pointer;border-radius:var(--r-sm);
+  white-space:nowrap;transition:all .15s;font-family:var(--sans);
+}
+.nav-tab:hover{color:var(--text);background:var(--surface2)}
+.nav-tab.active{color:var(--accent);background:rgba(79,142,247,0.1)}
+.nav-actions{display:flex;gap:8px;margin-left:auto}
+.btn-sm{
+  padding:5px 12px;font-size:12px;font-weight:500;font-family:var(--sans);
+  border-radius:var(--r-sm);cursor:pointer;border:1px solid var(--border2);
+  background:var(--surface2);color:var(--text2);transition:all .15s;
+}
+.btn-sm:hover{color:var(--text);border-color:var(--accent);background:rgba(79,142,247,0.08)}
+
+/* ── LAYOUT ── */
+.container{max-width:1200px;margin:0 auto;padding:1.5rem}
+.page{display:none}.page.active{display:block}
+
+/* ── CARDS ── */
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:1.25rem;
+}
+.card-title{
+  font-size:11px;font-weight:600;letter-spacing:0.1em;
+  text-transform:uppercase;color:var(--text3);margin-bottom:1rem;
+  font-family:var(--mono);
+}
+.card-title span{color:var(--text2);font-weight:400;letter-spacing:0}
+
+/* ── GRID ── */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+@media(max-width:900px){.grid-4{grid-template-columns:repeat(2,1fr)}.grid-3{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr}}
+
+/* ── METRICS ── */
+.metric{background:var(--surface2);border-radius:var(--r-sm);padding:1rem 1.1rem}
+.metric-label{font-size:11px;color:var(--text3);font-family:var(--mono);letter-spacing:0.05em;margin-bottom:4px}
+.metric-value{font-size:24px;font-weight:600;letter-spacing:-0.02em;line-height:1.1}
+.metric-sub{font-size:11px;color:var(--text2);margin-top:3px}
+
+/* ── STATUS PILL ── */
+.pill{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:600;font-family:var(--mono);
+  padding:3px 9px;border-radius:20px;letter-spacing:0.04em;
+}
+.pill-green{background:var(--green-bg);color:var(--green)}
+.pill-orange{background:var(--orange-bg);color:var(--orange)}
+.pill-red{background:var(--red-bg);color:var(--red)}
+.pill-dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+/* ── MACHINE CARDS (dashboard) ── */
+.machine-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-bottom:1.5rem}
+.machine-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:1.1rem;cursor:pointer;
+  transition:all .2s;position:relative;overflow:hidden;
+}
+.machine-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--accent),transparent);opacity:0;
+  transition:opacity .2s;
+}
+.machine-card:hover{border-color:var(--border2);transform:translateY(-1px)}
+.machine-card:hover::before{opacity:1}
+.machine-card.status-green::before{background:linear-gradient(90deg,var(--green),transparent);opacity:1}
+.machine-card.status-orange::before{background:linear-gradient(90deg,var(--orange),transparent);opacity:1}
+.machine-card.status-red::before{background:linear-gradient(90deg,var(--red),transparent);opacity:1}
+.mc-name{font-size:13px;font-weight:600;margin-bottom:2px;font-family:var(--mono)}
+.mc-op{font-size:11px;color:var(--text3);margin-bottom:.8rem;font-family:var(--mono)}
+.mc-speed{font-size:28px;font-weight:600;letter-spacing:-0.03em;line-height:1}
+.mc-unit{font-size:12px;color:var(--text2);margin-top:2px}
+.mc-row{display:flex;align-items:center;justify-content:space-between;margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--border)}
+.mc-baseline{font-size:12px;color:var(--text2)}
+.mc-nodata{color:var(--text3);font-size:13px;font-family:var(--mono)}
+
+/* ── PROGRESS BAR ── */
+.progress-wrap{background:var(--surface3);border-radius:4px;height:4px;margin-top:.5rem;overflow:hidden}
+.progress-fill{height:100%;border-radius:4px;transition:width .6s ease}
+.progress-green{background:var(--green)}
+.progress-orange{background:var(--orange)}
+.progress-red{background:var(--red)}
+
+/* ── DROP ZONE ── */
+.drop-zone{
+  border:1.5px dashed var(--border2);border-radius:var(--r);
+  padding:2rem;text-align:center;cursor:pointer;
+  background:var(--surface2);transition:all .2s;
+}
+.drop-zone:hover,.drop-zone.over{
+  border-color:var(--accent);background:rgba(79,142,247,0.06);
+}
+.drop-zone.loaded{border-style:solid;border-color:var(--green);background:rgba(62,207,142,0.05)}
+.drop-icon{font-size:24px;margin-bottom:8px;opacity:.5}
+.drop-title{font-size:14px;font-weight:500}
+.drop-sub{font-size:12px;color:var(--text2);margin-top:4px}
+
+/* ── TABLES ── */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{
+  text-align:left;padding:8px 10px;font-size:11px;font-weight:600;
+  color:var(--text3);border-bottom:1px solid var(--border);
+  font-family:var(--mono);letter-spacing:0.06em;text-transform:uppercase;
+}
+thead th:not(:first-child){text-align:right}
+tbody td{padding:9px 10px;border-bottom:1px solid var(--border);color:var(--text)}
+tbody td:not(:first-child){text-align:right;font-family:var(--mono);font-size:12px}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--surface2)}
+
+/* ── CHART ── */
+.chart-wrap{position:relative;width:100%;height:240px}
+
+/* ── WORKER BARS ── */
+.w-row{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px}
+.w-name{flex:0 0 150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.w-bar-bg{flex:1;background:var(--surface3);border-radius:3px;height:8px;overflow:hidden}
+.w-bar-fill{height:100%;border-radius:3px;background:var(--accent);transition:width .5s}
+.w-speed{flex:0 0 80px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--text2)}
+.w-vs{flex:0 0 60px;text-align:right;font-family:var(--mono);font-size:11px}
+
+/* ── FILTERS ── */
+.filter-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:1rem}
+.filter-label{font-size:12px;color:var(--text2)}
+.filter-select{
+  background:var(--surface2);border:1px solid var(--border2);
+  border-radius:var(--r-sm);padding:5px 10px;font-size:12px;
+  color:var(--text);font-family:var(--sans);cursor:pointer;
+}
+.filter-select:focus{outline:none;border-color:var(--accent)}
+
+/* ── WORKER CHIPS ── */
+.chip-bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1rem}
+.chip{
+  display:flex;align-items:center;gap:6px;font-size:12px;
+  background:var(--surface2);border:1px solid var(--border2);
+  border-radius:20px;padding:4px 10px;cursor:pointer;
+  transition:all .12s;color:var(--text);user-select:none;
+}
+.chip:hover{border-color:var(--accent)}
+.chip.off{color:var(--text3);text-decoration:line-through;border-color:var(--border)}
+.chip input{width:13px;height:13px;accent-color:var(--accent);cursor:pointer}
+
+/* ── DISCLAIMER ── */
+.disclaimer{
+  background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.2);
+  border-radius:var(--r-sm);padding:.75rem 1rem;font-size:12px;color:var(--orange);
+  margin-bottom:1rem;
+}
+.disclaimer strong{font-weight:600}
+
+/* ── TABS (in-page) ── */
+.tab-bar{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:1.25rem}
+.tab{
+  padding:8px 16px;font-size:12px;font-weight:500;font-family:var(--sans);
+  border:none;background:none;color:var(--text2);cursor:pointer;
+  border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;
+}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ── SECTION SPACING ── */
+.section{margin-bottom:1.25rem}
+.section-head{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:.75rem;
+}
+.section-title{font-size:13px;font-weight:600;color:var(--text)}
+.gap{margin-bottom:1rem}
+
+/* ── UPLOAD HISTORY ── */
+.upload-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;
+}
+.upload-item:last-child{border-bottom:none}
+.upload-name{font-family:var(--mono);color:var(--text2)}
+.upload-meta{color:var(--text3)}
+.btn-del{
+  background:none;border:none;color:var(--text3);cursor:pointer;
+  font-size:14px;padding:2px 6px;border-radius:4px;
+}
+.btn-del:hover{color:var(--red);background:var(--red-bg)}
+
+/* ── PERCENTILE BADGE ── */
+.pct-badge{
+  display:inline-block;padding:2px 8px;border-radius:4px;
+  font-size:11px;font-family:var(--mono);font-weight:600;
+}
+
+/* ── EMPTY STATE ── */
+.empty{text-align:center;padding:3rem 1rem;color:var(--text3);font-size:13px}
+.empty-icon{font-size:32px;margin-bottom:.5rem;opacity:.4}
+
+/* ── ERRORS ── */
+.err{
+  background:var(--red-bg);border:1px solid rgba(239,68,68,.2);
+  border-radius:var(--r-sm);padding:.6rem 1rem;font-size:12px;
+  color:var(--red);margin-top:.75rem;display:none;
+}
+
+/* ── BUTTONS ── */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 16px;font-size:13px;font-weight:500;
+  border-radius:var(--r-sm);cursor:pointer;font-family:var(--sans);
+  border:none;transition:all .15s;
+}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2)}
+.btn-outline{background:none;border:1px solid var(--border2);color:var(--text2)}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── SCROLL ── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:3px}
+
+/* ── MODAL ── */
+.modal-overlay{
+  position:fixed;inset:0;z-index:1000;
+  background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:var(--r);padding:1.5rem;min-width:320px;max-width:480px;
+  width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);
+}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:1rem}
+.modal-body{font-size:13px;color:var(--text2);margin-bottom:1.25rem;line-height:1.7}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end}
+.modal-progress{margin-top:.75rem;font-size:12px;color:var(--text3);font-family:var(--mono)}
+.progress-bar-outer{background:var(--surface3);border-radius:4px;height:6px;margin-top:6px;overflow:hidden}
+.progress-bar-inner{height:100%;background:var(--accent);border-radius:4px;transition:width .3s;width:0}
+
+/* ── TREND ARROW ── */
+.trend-up{color:var(--green)}
+.trend-down{color:var(--red)}
+.trend-flat{color:var(--text3)}
+
+/* ── WORKER MONTHLY ── */
+.wm-section{margin-bottom:1.5rem}
+.wm-head{
+  font-size:11px;font-weight:600;font-family:var(--mono);letter-spacing:0.08em;
+  text-transform:uppercase;color:var(--text3);
+  border-bottom:1px solid var(--border);padding-bottom:7px;margin-bottom:8px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.wm-head-speed{color:var(--text2);font-weight:400}
+.wm-row{display:flex;align-items:center;gap:10px;padding:4px 0;font-size:12px}
+.wm-name{flex:0 0 155px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.wm-name.total{color:var(--text3);font-style:italic}
+.wm-bar-bg{flex:1;background:var(--surface3);border-radius:3px;height:8px;overflow:hidden}
+.wm-bar-fill{height:100%;border-radius:3px;background:var(--accent);transition:width .5s}
+.wm-bar-fill.total{background:var(--text3)}
+.wm-speed{flex:0 0 80px;text-align:right;font-family:var(--mono);color:var(--text2)}
+.wm-speed.total{color:var(--text);font-weight:600}
+.wm-vs{flex:0 0 55px;text-align:right;font-family:var(--mono);font-size:11px}
+.worker-view-toggle{display:flex;gap:4px;margin-bottom:.75rem}
+.wv-btn{
+  padding:4px 12px;font-size:11px;font-weight:500;font-family:var(--sans);
+  border-radius:20px;cursor:pointer;border:1px solid var(--border2);
+  background:none;color:var(--text2);transition:all .15s;
+}
+.wv-btn.active{background:rgba(79,142,247,0.15);border-color:var(--accent);color:var(--accent)}
+
+/* ── ROLLING LINE ── */
+canvas{display:block}
+
+/* ── ANOMÁLIE ── */
+.anomaly-banner{
+  background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);
+  border-radius:var(--r-sm);padding:.75rem 1rem;margin-bottom:1rem;
+}
+.anomaly-title{font-size:12px;font-weight:600;color:var(--red);margin-bottom:.4rem;font-family:var(--mono)}
+.anomaly-item{font-size:12px;color:var(--text2);padding:3px 0;border-bottom:0.5px solid rgba(239,68,68,0.1)}
+.anomaly-item:last-child{border-bottom:none}
+.anomaly-val{font-family:var(--mono);color:var(--red)}
+.anomaly-worker{color:var(--text3)}
+
+/* ── POROVNÁNÍ LET ── */
+.year-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;margin-bottom:1.25rem}
+.year-card{background:var(--surface2);border-radius:var(--r-sm);padding:1rem}
+.year-card-title{font-size:11px;font-weight:600;font-family:var(--mono);color:var(--text3);
+  letter-spacing:.08em;text-transform:uppercase;margin-bottom:.6rem}
+.year-stat{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;
+  border-bottom:.5px solid var(--border)}
+.year-stat:last-child{border-bottom:none}
+.year-stat-val{font-family:var(--mono);color:var(--text)}
+
+/* ── DATUM AKTUALIZACE ── */
+.mc-updated{font-size:10px;color:var(--text3);margin-top:.4rem;font-family:var(--mono)}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">INTEGRAF <span>//</span> KPI</div>
+  <div class="nav-tabs" id="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('dashboard',this)">Dashboard</button>
+  </div>
+  <div class="nav-actions">
+    <button class="btn-sm" onclick="exportExcel()">↓ Excel</button>
+    <button class="btn-sm" onclick="exportPDF()">↓ PDF</button>
+    <button class="btn-sm" onclick="backupData()">💾 Záloha</button>
+    <button class="btn-sm" onclick="document.getElementById('restore-input').click()">↑ Obnova</button>
+    <input type="file" id="restore-input" accept=".json" style="display:none" onchange="restoreData(this)">
+    <button class="btn-sm" onclick="clearAllData()" style="color:var(--red)">Reset</button>
+  </div>
+</nav>
+
+<!-- PDF MODAL -->
+<div class="modal-overlay" id="pdf-modal">
+  <div class="modal">
+    <div class="modal-title">Export do PDF</div>
+    <div class="modal-body" id="pdf-modal-body">
+      Vyberte, co chcete exportovat do PDF.
+    </div>
+    <div id="pdf-machine-select" style="display:flex;flex-direction:column;gap:6px;margin-bottom:1rem;max-height:220px;overflow-y:auto"></div>
+    <div class="modal-progress" id="pdf-progress-text" style="display:none"></div>
+    <div class="progress-bar-outer" id="pdf-progress-bar" style="display:none">
+      <div class="progress-bar-inner" id="pdf-progress-fill"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closePdfModal()">Zrušit</button>
+      <button class="btn btn-primary" id="pdf-start-btn" onclick="startPdfExport()">Generovat PDF</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ══ DASHBOARD PAGE ══ -->
+  <div class="page active" id="page-dashboard">
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Přehled strojů</div>
+        <div class="filter-bar" style="margin:0">
+          <span class="filter-label">Období:</span>
+          <select class="filter-select" id="dash-period" onchange="renderDashboard()">
+            <option value="0" selected>Vše</option>
+            <option value="30">Posledních 30 dní</option>
+            <option value="90">Posledních 90 dní</option>
+            <option value="180">Posledních 6 měsíců</option>
+            <option value="365">Posledních 12 měsíců</option>
+          </select>
+        </div>
+      </div>
+      <div class="machine-grid" id="dashboard-grid"></div>
+    </div>
+
+    <div class="grid-2 gap">
+      <div class="card">
+        <div class="card-title">Vývoj výkonu — všechny stroje <span>(rolling 4t průměr)</span></div>
+        <div class="chart-wrap"><canvas id="chart-overview"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Výkon vs baseline <span>(aktuální měsíc)</span></div>
+        <div class="chart-wrap"><canvas id="chart-vs-baseline"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MACHINE PAGES — generated per machine ══ -->
+
+</div><!-- /container -->
+
+<script>
+// ════════════════════════════════════════════════════════════
+// KONFIGURACE STROJŮ
+// ════════════════════════════════════════════════════════════
+// Každý stroj má id, název, jednu pevnou operaci a volitelně siblingId
+// (V2 PUR a V2 BLOKY sdílejí upload — nahrání na jedné uloží data pro obě)
+const MACHINES = [
+  { id:'v1',      name:'V1',            ops: ['79/2,produkce V1'] },
+  { id:'v2pur',   name:'V2 — PUR',      ops: ['73/2,lepení PUR'],   sibling:'v2bloky' },
+  { id:'v2bloky', name:'V2 — BLOKY',    ops: ['73/11,lepení BLOKY'], sibling:'v2pur'  },
+  { id:'stahl82', name:'STAHL 82',      ops: ['62/1,falcování'] },
+  { id:'stahlkh', name:'STAHL KH 78',   ops: ['61/1,falcování'] },
+  { id:'mbo',     name:'MBO',           ops: ['60/1,falcování'] },
+  { id:'brausse', name:'BRAUSSE BORA',  ops: ['64/2,výsek, bigování'] },
+  { id:'okenko',  name:'OKÉNKOVAČKA',   ops: ['74/2,okénkování'] },
+  { id:'lepicka', name:'LEPIČKA OMEGA', ops: ['72/2,lepení na stroji'] },
+];
+
+function getActiveOp(machineId){
+  const m = MACHINES.find(x=>x.id===machineId);
+  return m ? m.ops[0] : '';
+}
+// Zachováno pro zpětnou kompatibilitu zálohy
+function setActiveOp(machineId, op){}
+
+// ════════════════════════════════════════════════════════════
+// DATABÁZE (localStorage)
+// ════════════════════════════════════════════════════════════
+function dbKey(machineId){ return `igf_kpi_${machineId}`; }
+
+function dbLoad(machineId){
+  try {
+    const raw = localStorage.getItem(dbKey(machineId));
+    return raw ? JSON.parse(raw) : { uploads:[], records:[] };
+  } catch(e){ return { uploads:[], records:[] }; }
+}
+
+function dbSave(machineId, data){
+  localStorage.setItem(dbKey(machineId), JSON.stringify(data));
+}
+
+function dbDeleteUpload(machineId, uploadId){
+  const db = dbLoad(machineId);
+  db.uploads = db.uploads.filter(u => u.id !== uploadId);
+  db.records = db.records.filter(r => r.uploadId !== uploadId);
+  dbSave(machineId, db);
+}
+
+function getOp(machineId){ return getActiveOp(machineId); }
+function saveOp(machineId, op){} // zpětná kompatibilita zálohy
+
+// Načte unikátní operace z xlsx bufferu (pro nápovědu)
+function extractOpsFromBuffer(buffer){
+  const wb = XLSX.read(buffer,{type:'array'});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+  const ops = new Set();
+  for(let i=1;i<rows.length;i++){
+    const op=String(rows[i][3]||'').trim();
+    if(op) ops.add(op);
+  }
+  return [...ops];
+}
+
+function clearAllData(){
+  if(!confirm('Smazat VŠECHNA data ze všech strojů? Tuto akci nelze vrátit.')) return;
+  MACHINES.forEach(m => localStorage.removeItem(dbKey(m.id)));
+  renderDashboard();
+  MACHINES.forEach(m => renderMachinePage(m.id));
+}
+
+// ════════════════════════════════════════════════════════════
+// PARSOVÁNÍ XLSX
+// ════════════════════════════════════════════════════════════
+function parseTimeMinutes(s){
+  s = String(s||'');
+  const matches = [...s.matchAll(/\(\s*(\d+):(\d+)\s*\)/g)];
+  if(!matches.length) return null;
+  return matches.reduce((sum,m)=>sum+parseInt(m[1])*60+parseInt(m[2]),0);
+}
+
+function parseQty(val){
+  if(val===null||val===undefined||val==='') return null;
+  if(typeof val==='number') return val;
+  const c = String(val).replace(/\xa0/g,'').replace(/\s/g,'').replace(/\./g,'').replace(',','.');
+  const n = parseFloat(c);
+  return isNaN(n)?null:n;
+}
+
+function parseDate(val){
+  if(!val) return null;
+  if(val instanceof Date) return val;
+  if(typeof val==='string'){
+    const d = new Date(val);
+    return isNaN(d)?null:d;
+  }
+  if(typeof val==='number'){
+    return new Date(Math.round((val-25569)*86400*1000));
+  }
+  return null;
+}
+
+function isoWeek(d){
+  const jan4 = new Date(d.getFullYear(),0,4);
+  const diff = d - jan4;
+  const week = Math.ceil((diff/(86400000)+jan4.getDay()+1)/7);
+  return `${d.getFullYear()}-W${String(week).padStart(2,'0')}`;
+}
+
+function processXlsx(fileBuffer, opFilter){
+  const wb = XLSX.read(fileBuffer,{type:'array'});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+  const records = [];
+  const filterLc = opFilter.trim().toLowerCase();
+  for(let i=1;i<rows.length;i++){
+    const row = rows[i];
+    const op = String(row[3]||'').trim().toLowerCase();
+    if(!op.includes(filterLc)) continue;
+    const mins = parseTimeMinutes(row[5]);
+    const qty  = parseQty(row[6]);
+    const date = parseDate(row[4]);
+    const worker = String(row[2]||'').trim()||'(neznámý)';
+    if(mins===null||qty===null||!date||mins===0) continue;
+    const speed = qty/mins*60;
+    records.push({
+      date: date.toISOString().slice(0,10),
+      ym: date.toISOString().slice(0,7),
+      week: isoWeek(date),
+      worker, speed, qty, mins,
+    });
+  }
+  return records;
+}
+
+// ════════════════════════════════════════════════════════════
+// STATISTIKY
+// ════════════════════════════════════════════════════════════
+function median(arr){
+  if(!arr.length) return null;
+  const s = [...arr].sort((a,b)=>a-b);
+  const m = Math.floor(s.length/2);
+  return s.length%2?s[m]:(s[m-1]+s[m])/2;
+}
+
+function percentile(arr, p){
+  if(!arr.length) return null;
+  const s = [...arr].sort((a,b)=>a-b);
+  const idx = (p/100)*(s.length-1);
+  const lo = Math.floor(idx), hi = Math.ceil(idx);
+  return s[lo]+(s[hi]-s[lo])*(idx-lo);
+}
+
+function percentileRank(arr, val){
+  if(!arr.length||val===null) return null;
+  const below = arr.filter(v=>v<=val).length;
+  return (below/arr.length)*100;
+}
+
+function rollingAvg(data, window=4){
+  // data = [{x, y}] sorted by x
+  return data.map((_,i)=>{
+    const slice = data.slice(Math.max(0,i-window+1),i+1);
+    const avg = slice.reduce((s,d)=>s+d.y,0)/slice.length;
+    return {x:data[i].x, y:Math.round(avg)};
+  });
+}
+
+function filterByDays(records, days){
+  if(!days) return records;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate()-days);
+  const cutStr = cutoff.toISOString().slice(0,10);
+  return records.filter(r=>r.date>=cutStr);
+}
+
+function aggByMonth(records){
+  const byM = {};
+  records.forEach(r=>{
+    if(!byM[r.ym]) byM[r.ym]={qty:0,mins:0};
+    byM[r.ym].qty+=r.qty;
+    byM[r.ym].mins+=r.mins;
+  });
+  return Object.entries(byM).sort(([a],[b])=>a<b?-1:1).map(([ym,d])=>({
+    ym, speed:d.mins>0?d.qty/d.mins*60:0, qty:d.qty, mins:d.mins
+  }));
+}
+
+function aggByWeek(records){
+  const byW = {};
+  records.forEach(r=>{
+    if(!byW[r.week]) byW[r.week]={qty:0,mins:0};
+    byW[r.week].qty+=r.qty;
+    byW[r.week].mins+=r.mins;
+  });
+  return Object.entries(byW).sort(([a],[b])=>a<b?-1:1).map(([week,d])=>({
+    week, speed:d.mins>0?d.qty/d.mins*60:0, qty:d.qty, mins:d.mins
+  }));
+}
+
+function aggByWorker(records, activeWorkers=null){
+  const byW = {};
+  records.forEach(r=>{
+    if(activeWorkers&&!activeWorkers.has(r.worker)) return;
+    if(!byW[r.worker]) byW[r.worker]={qty:0,mins:0,days:new Set()};
+    byW[r.worker].qty+=r.qty;
+    byW[r.worker].mins+=r.mins;
+    byW[r.worker].days.add(r.date);
+  });
+  return Object.entries(byW).sort(([a],[b])=>a<b?-1:1).map(([worker,d])=>({
+    worker, speed:d.mins>0?d.qty/d.mins*60:0, qty:d.qty, mins:d.mins, days:d.days.size
+  }));
+}
+
+function computeStats(records, periodDays=0){
+  const filtered = filterByDays(records, periodDays);
+  const monthly = aggByMonth(filtered);
+  const weekly = aggByWeek(filtered);
+  const allSpeeds = monthly.map(m=>m.speed).filter(s=>s>0);
+  const allWeeklySpeeds = weekly.map(w=>w.speed).filter(s=>s>0);
+
+  const bl = median(allSpeeds);
+  const current = monthly.length ? monthly[monthly.length-1].speed : null;
+  const prevMonth = monthly.length>1 ? monthly[monthly.length-2].speed : null;
+  const vsBaseline = bl&&current ? current/bl*100 : null;
+
+  const weeklyTrend = (() => {
+    if(weekly.length<2) return null;
+    const last = weekly[weekly.length-1].speed;
+    const prev = weekly[weekly.length-2].speed;
+    return prev>0?(last-prev)/prev*100:null;
+  })();
+
+  const monthlyTrend = (() => {
+    if(monthly.length<2) return null;
+    const last = monthly[monthly.length-1].speed;
+    const prev = monthly[monthly.length-2].speed;
+    return prev>0?(last-prev)/prev*100:null;
+  })();
+
+  const pRank = percentileRank(allSpeeds, current);
+  const p10 = percentile(allSpeeds,10);
+  const p90 = percentile(allSpeeds,90);
+
+  return { monthly, weekly, allSpeeds, allWeeklySpeeds, baseline:bl, current, prevMonth, vsBaseline, weeklyTrend, monthlyTrend, pRank, p10, p90 };
+}
+
+// ════════════════════════════════════════════════════════════
+// UI HELPERS
+// ════════════════════════════════════════════════════════════
+function fmt(n,dec=0){ return n===null||n===undefined?'—':Math.round(n).toLocaleString('cs-CZ'); }
+function fmtPct(n){ return n===null||n===undefined?'—':`${n>=0?'+':''}${n.toFixed(1)}%`; }
+function fmtSpeed(n){ return n===null?'—':`${Math.round(n).toLocaleString('cs-CZ')} ks/h`; }
+function monthName(ym){
+  const [y,m]=ym.split('-');
+  const n=['','Led','Úno','Bře','Dub','Kvě','Čvn','Čvc','Srp','Zář','Říj','Lis','Pro'];
+  return n[parseInt(m)]+' '+y;
+}
+
+function statusClass(vsBaseline){
+  if(vsBaseline===null) return '';
+  if(vsBaseline>=97) return 'status-green';
+  if(vsBaseline>=88) return 'status-orange';
+  return 'status-red';
+}
+
+function pillStatus(vsBaseline){
+  if(vsBaseline===null) return '<span class="pill" style="background:var(--surface3);color:var(--text3)">Bez dat</span>';
+  if(vsBaseline>=97) return `<span class="pill pill-green"><span class="pill-dot"></span>${vsBaseline.toFixed(0)}%</span>`;
+  if(vsBaseline>=88) return `<span class="pill pill-orange"><span class="pill-dot"></span>${vsBaseline.toFixed(0)}%</span>`;
+  return `<span class="pill pill-red"><span class="pill-dot"></span>${vsBaseline.toFixed(0)}%</span>`;
+}
+
+function percentileBadge(pRank, p10, p90, current){
+  if(pRank===null||current===null) return '';
+  if(current>=p90) return '<span class="pct-badge" style="background:var(--green-bg);color:var(--green)">TOP 10%</span>';
+  if(current<=p10) return '<span class="pct-badge" style="background:var(--red-bg);color:var(--red)">PODPRŮMĚR</span>';
+  return '<span class="pct-badge" style="background:var(--surface3);color:var(--text2)">Běžný výkon</span>';
+}
+
+function trendArrow(val){
+  if(val===null) return '<span class="trend-flat">—</span>';
+  if(val>2) return `<span class="trend-up">↑ ${fmtPct(val)}</span>`;
+  if(val<-2) return `<span class="trend-down">↓ ${fmtPct(val)}</span>`;
+  return `<span class="trend-flat">→ ${fmtPct(val)}</span>`;
+}
+
+// ════════════════════════════════════════════════════════════
+// NAVIGACE
+// ════════════════════════════════════════════════════════════
+function showPage(id, btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  const pg = document.getElementById('page-'+id);
+  if(pg) pg.classList.add('active');
+  if(btn) btn.classList.add('active');
+}
+
+function showMachinePage(machineId){
+  const tabId = 'tab-'+machineId;
+  const pageId = 'page-'+machineId;
+  // create tab if missing
+  let tab = document.getElementById(tabId);
+  if(!tab){
+    tab = document.createElement('button');
+    tab.className = 'nav-tab';
+    tab.id = tabId;
+    const m = MACHINES.find(m=>m.id===machineId);
+    tab.textContent = m.name;
+    tab.onclick = ()=>{ showPage(machineId,tab); };
+    document.getElementById('nav-tabs').appendChild(tab);
+  }
+  showPage(machineId, tab);
+  renderMachinePage(machineId);
+}
+
+// ════════════════════════════════════════════════════════════
+// DASHBOARD
+// ════════════════════════════════════════════════════════════
+let overviewChart=null, vsBaselineChart=null;
+
+function renderDashboard(){
+  const days = parseInt(document.getElementById('dash-period').value)||0;
+  const grid = document.getElementById('dashboard-grid');
+  grid.innerHTML='';
+
+  const allMachineData = [];
+
+  MACHINES.forEach(m=>{
+    const db = dbLoad(m.id);
+    const stats = computeStats(db.records, days);
+    allMachineData.push({m, stats});
+
+    const card = document.createElement('div');
+    card.className = `machine-card ${statusClass(stats.vsBaseline)}`;
+    card.onclick = ()=>showMachinePage(m.id);
+
+    const pct = stats.vsBaseline!==null ? Math.min(150,stats.vsBaseline) : 0;
+    const barClass = stats.vsBaseline===null?'progress-orange':stats.vsBaseline>=97?'progress-green':stats.vsBaseline>=88?'progress-orange':'progress-red';
+
+    card.innerHTML = `
+      <div class="mc-name">${m.name}</div>
+      <div class="mc-op" style="font-size:10px">${m.ops[0]}</div>
+      ${stats.current!==null?`
+        <div class="mc-speed">${fmt(stats.current)}</div>
+        <div class="mc-unit">ks/h aktuální měsíc</div>
+        <div class="progress-wrap"><div class="progress-fill ${barClass}" style="width:${Math.min(100,pct)}%"></div></div>
+        <div class="mc-row">
+          <div class="mc-baseline">Baseline: <strong>${fmt(stats.baseline)}</strong></div>
+          ${pillStatus(stats.vsBaseline)}
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.5rem;font-size:11px;color:var(--text3)">
+          <span>Týden: ${trendArrow(stats.weeklyTrend)}</span>
+          <span>Měsíc: ${trendArrow(stats.monthlyTrend)}</span>
+          ${percentileBadge(stats.pRank,stats.p10,stats.p90,stats.current)}
+        </div>
+      `:`<div class="mc-nodata" style="margin-top:.5rem">Žádná data — klikněte pro nahrání</div>`}
+      ${(()=>{
+        const lu=db.uploads.length?db.uploads[db.uploads.length-1]:null;
+        if(!lu) return '';
+        return `<div class="mc-updated">Aktualizováno: ${new Date(lu.date).toLocaleDateString('cs-CZ')}</div>`;
+      })()}
+    `;
+    grid.appendChild(card);
+  });
+
+  // Overview chart — monthly rolling avg per machine
+  buildOverviewChart(allMachineData, days);
+  buildVsBaselineChart(allMachineData);
+}
+
+function buildOverviewChart(allMachineData, days){
+  const ctx = document.getElementById('chart-overview').getContext('2d');
+  if(overviewChart) overviewChart.destroy();
+
+  const colors=['#4f8ef7','#3ecf8e','#f59e0b','#ef4444','#a855f7','#ec4899','#06b6d4','#84cc16'];
+  const datasets = [];
+
+  allMachineData.forEach(({m,stats},i)=>{
+    if(!stats.monthly.length) return;
+    const data = stats.monthly.map(mo=>({x:mo.ym,y:Math.round(mo.speed)}));
+    const rolling = rollingAvg(data,3);
+    datasets.push({
+      label: m.name,
+      data: rolling.map(d=>({x:d.x,y:d.y})),
+      borderColor: colors[i%colors.length],
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      pointRadius: 3,
+      tension: 0.4,
+    });
+  });
+
+  if(!datasets.length){
+    overviewChart = null;
+    return;
+  }
+
+  overviewChart = new Chart(ctx,{
+    type:'line',
+    data:{datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#9b98b0',font:{size:11}}}},
+      scales:{
+        x:{ticks:{color:'#5c5a72',font:{size:10},maxRotation:45},grid:{color:'rgba(255,255,255,0.04)'}},
+        y:{ticks:{color:'#5c5a72',font:{size:10},callback:v=>v.toLocaleString('cs-CZ')},grid:{color:'rgba(255,255,255,0.04)'}}
+      }
+    }
+  });
+}
+
+function buildVsBaselineChart(allMachineData){
+  const ctx = document.getElementById('chart-vs-baseline').getContext('2d');
+  if(vsBaselineChart) vsBaselineChart.destroy();
+
+  const labels=[],data=[],colors=[];
+  allMachineData.forEach(({m,stats})=>{
+    if(stats.current===null) return;
+    labels.push(m.name);
+    data.push(parseFloat((stats.vsBaseline||0).toFixed(1)));
+    colors.push(stats.vsBaseline>=97?'#3ecf8e':stats.vsBaseline>=88?'#f59e0b':'#ef4444');
+  });
+
+  if(!labels.length){vsBaselineChart=null;return;}
+
+  vsBaselineChart = new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[{
+        label:'% vs baseline',
+        data,
+        backgroundColor:colors,
+        borderRadius:4,
+        borderSkipped:false,
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        annotation:{},
+        tooltip:{callbacks:{label:ctx=>` ${ctx.parsed.y.toFixed(1)} %`}}
+      },
+      scales:{
+        x:{ticks:{color:'#5c5a72',font:{size:11}},grid:{display:false}},
+        y:{
+          ticks:{color:'#5c5a72',font:{size:10},callback:v=>v+'%'},
+          grid:{color:'rgba(255,255,255,0.04)'},
+          min:0,
+        }
+      }
+    }
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+// STRÁNKY STROJŮ
+// ════════════════════════════════════════════════════════════
+const machineCharts = {};
+
+function buildMachinePageHTML(m){
+  return `
+  <div class="page" id="page-${m.id}">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem">
+      <div>
+        <div style="font-size:20px;font-weight:600;font-family:var(--mono)">${m.name}</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px" id="${m.id}-op-display">Operace: <span style="color:var(--text2)">—</span></div>
+      </div>
+      <div class="filter-bar" style="margin:0">
+        <span class="filter-label">Období:</span>
+        <select class="filter-select" id="${m.id}-period" onchange="renderMachinePage('${m.id}')">
+          <option value="0" selected>Vše</option>
+          <option value="30">30 dní</option>
+          <option value="90">90 dní</option>
+          <option value="180">6 měsíců</option>
+          <option value="365">12 měsíců</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- METRICS ROW -->
+    <div class="grid-4 gap" id="${m.id}-metrics"></div>
+
+    <!-- UPLOAD + HISTORY -->
+    <div class="grid-2 gap">
+      <div class="card">
+        <div class="card-title">Nahrát data</div>
+
+        <!-- OPERACE -->
+        <div style="margin-bottom:.75rem" id="${m.id}-op-section"></div>
+
+        <div class="drop-zone" id="${m.id}-dz" tabindex="0" role="button">
+          <div class="drop-icon">📂</div>
+          <div class="drop-title" id="${m.id}-dz-title">Přetáhněte nebo klikněte pro výběr xlsx</div>
+          <div class="drop-sub" id="${m.id}-dz-sub">Soubor se přidá k historii stroje</div>
+        </div>
+        <div class="err" id="${m.id}-err"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Historie uploadů</div>
+        <div id="${m.id}-uploads"></div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="card">
+      <div class="tab-bar">
+        <button class="tab active" onclick="switchMachineTab('${m.id}','perf',this)">Výkon</button>
+        <button class="tab" onclick="switchMachineTab('${m.id}','workers',this)">Pracovníci</button>
+        <button class="tab" onclick="switchMachineTab('${m.id}','anomalies',this)">Anomálie</button>
+        <button class="tab" onclick="switchMachineTab('${m.id}','history',this)">Data po měsících</button>
+      </div>
+
+      <!-- VÝKON TAB -->
+      <div id="${m.id}-tab-perf">
+        <div class="grid-2">
+          <div>
+            <div class="card-title">Vývoj výkonu <span>(ks/h po měsících)</span></div>
+            <div class="chart-wrap"><canvas id="${m.id}-chart-monthly"></canvas></div>
+          </div>
+          <div>
+            <div class="card-title">Rolling průměr <span>(4měsíční okno)</span></div>
+            <div class="chart-wrap"><canvas id="${m.id}-chart-rolling"></canvas></div>
+          </div>
+        </div>
+        <div style="margin-top:1rem">
+          <div class="card-title">Týdenní vývoj <span>(poslední data)</span></div>
+          <div class="chart-wrap" style="height:180px"><canvas id="${m.id}-chart-weekly"></canvas></div>
+        </div>
+        <div id="${m.id}-years-content" style="margin-top:1.25rem"></div>
+      </div>
+
+      <!-- PRACOVNÍCI TAB -->
+      <div id="${m.id}-tab-workers" style="display:none">
+        <div class="disclaimer">
+          <strong>⚠ Orientační výkonové statistiky</strong> — Na jedné zakázce pracuje více zaměstnanců (seřizování, výroba, dokončování). Zakázky mají různou náročnost. Tato data NEJSOU objektivním měřítkem individuálního výkonu.
+        </div>
+
+        <!-- Kontroly nad pracovníky -->
+        <div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;margin-bottom:.75rem;
+                    background:var(--surface2);border-radius:var(--r-sm);padding:.6rem 1rem;">
+          <div style="display:flex;align-items:center;gap:.5rem;font-size:12px;color:var(--text2)">
+            <span>Min. hodin pro zobrazení:</span>
+            <input type="range" id="${m.id}-min-hours" min="0" max="100" step="5" value="10"
+              style="width:90px;accent-color:var(--accent)"
+              oninput="onMinHoursChange('${m.id}',this.value)">
+            <span id="${m.id}-min-hours-val" style="font-family:var(--mono);color:var(--accent);min-width:30px">10 h</span>
+          </div>
+          <div style="font-size:11px;color:var(--text3)">
+            Skryje pracovníky s nedostatečným počtem hodin dat — jejich výsledky nejsou statisticky spolehlivé.
+          </div>
+          <div class="worker-view-toggle" style="margin-left:auto">
+            <button class="wv-btn active" id="${m.id}-wv-celkem" onclick="setWorkerView('${m.id}','celkem',this)">Celkem</button>
+            <button class="wv-btn" id="${m.id}-wv-mesice" onclick="setWorkerView('${m.id}','mesice',this)">Po měsících</button>
+          </div>
+        </div>
+
+        <div class="chip-bar" id="${m.id}-worker-chips"></div>
+        <div id="${m.id}-worker-celkem"></div>
+        <div id="${m.id}-worker-mesice" style="display:none"></div>
+      </div>
+
+      <!-- ANOMÁLIE TAB -->
+      <div id="${m.id}-tab-anomalies" style="display:none">
+        <div id="${m.id}-anomalies"></div>
+      </div>
+
+      <!-- HISTORIE TAB -->
+      <div id="${m.id}-tab-history" style="display:none">
+        <div class="table-wrap" id="${m.id}-history-table"></div>
+      </div>
+
+    </div>
+  </div>`;
+}
+
+function initMachinePage(m){
+  const container = document.querySelector('.container');
+  const div = document.createElement('div');
+  div.innerHTML = buildMachinePageHTML(m);
+  container.appendChild(div.firstElementChild);
+
+  // Vyrenderuj sekci operace podle typu stroje
+  renderOpSection(m);
+
+  initDropZone(m);
+}
+
+function renderOpSection(m){
+  const sec = document.getElementById(`${m.id}-op-section`);
+  if(!sec) return;
+  // Informativní badge s pevnou operací
+  const siblingNote = m.sibling
+    ? `<div style="font-size:11px;color:var(--text3);margin-top:5px">
+        Soubor stačí nahrát zde — data pro
+        <span style="color:var(--accent)">${MACHINES.find(x=>x.id===m.sibling)?.name||m.sibling}</span>
+        se uloží automaticky zároveň.
+       </div>`
+    : `<div style="font-size:11px;color:var(--text3);margin-top:5px">Operace je nastavena systémem.</div>`;
+  sec.innerHTML = `
+    <div style="font-size:12px;color:var(--text2);margin-bottom:6px;font-family:var(--mono)">Operace (předdefinováno)</div>
+    <div style="display:inline-flex;align-items:center;gap:8px;background:var(--surface2);
+                border:1px solid var(--border2);border-radius:var(--r-sm);padding:7px 12px;">
+      <span style="width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0"></span>
+      <span style="font-family:var(--mono);font-size:13px;color:var(--text)">${m.ops[0]}</span>
+    </div>
+    ${siblingNote}`;
+  updateOpDisplay(m.id);
+}
+
+function updateOpDisplay(machineId){
+  const val = getActiveOp(machineId);
+  const el = document.getElementById(`${machineId}-op-display`);
+  if(el) el.innerHTML=`Operace: <span style="color:var(--text2)">${val||'—'}</span>`;
+}
+
+function applyOp(machineId){ /* zachováno pro zpětnou kompatibilitu */ }
+
+function showOpTags(machineId, opsInFile){
+  // Pro stroje s pevnou operací: zobraz jen info kolik záznamů odpovídá
+  // Zobraz info o nalezených záznamech
+  const m = MACHINES.find(x=>x.id===machineId);
+  if(!m) return;
+  const msg = document.getElementById(`${machineId}-op-msg`);
+  if(!msg) return;
+
+  const opLc = m.ops[0].toLowerCase();
+  const matchCount = opsInFile.filter(o=>o.toLowerCase().includes(opLc)).length;
+
+  // Pokud má sourozenecký stroj, zkontroluj i jeho operaci
+  let sibNote = '';
+  if(m.sibling){
+    const sibM = MACHINES.find(x=>x.id===m.sibling);
+    if(sibM){
+      const sibCount = opsInFile.filter(o=>o.toLowerCase().includes(sibM.ops[0].toLowerCase())).length;
+      sibNote = sibCount>0
+        ? ` · ${sibM.name}: ${sibCount} ✓`
+        : ` · ${sibM.name}: nenalezeno`;
+    }
+  }
+
+  if(matchCount === 0){
+    msg.textContent = `⚠ Soubor neobsahuje záznamy pro "${m.ops[0]}"${sibNote}`;
+    msg.style.color = 'var(--orange)';
+  } else {
+    msg.textContent = `✓ Nalezeno ${matchCount} záznamů pro "${m.ops[0]}"${sibNote}`;
+    msg.style.color = 'var(--green)';
+  }
+}
+
+function initDropZone(m){
+  const dz = document.getElementById(`${m.id}-dz`);
+  dz.addEventListener('click',()=>{
+    const inp=document.createElement('input');
+    inp.type='file';inp.accept='.xlsx,.xlsm';
+    inp.onchange=e=>handleUpload(m,e.target.files[0]);
+    inp.click();
+  });
+  dz.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')dz.click();});
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+  dz.addEventListener('drop',e=>{
+    e.preventDefault();dz.classList.remove('over');
+    const f=e.dataTransfer.files[0];if(f)handleUpload(m,f);
+  });
+}
+
+function handleUpload(m, file){
+  if(!file) return;
+  const dzSub = document.getElementById(`${m.id}-dz-sub`);
+  const errEl = document.getElementById(`${m.id}-err`);
+  dzSub.textContent='Načítám soubor…';
+  errEl.style.display='none';
+
+  const reader = new FileReader();
+  reader.onload = e=>{
+    try{
+      const buffer = e.target.result;
+
+      // Vždy zobraz operace ze souboru jako klikatelné tagy
+      const opsInFile = extractOpsFromBuffer(buffer);
+      showOpTags(m.id, opsInFile);
+
+      // Zpracuj záznamy pro tento stroj
+      const records = processXlsx(buffer, m.ops[0]);
+
+      // Pokud má stroj sourozence (V2 PUR ↔ V2 BLOKY), zpracuj a ulož i jeho záznamy
+      if(m.sibling){
+        const sibM = MACHINES.find(x=>x.id===m.sibling);
+        if(sibM){
+          const sibRecords = processXlsx(buffer, sibM.ops[0]);
+          if(sibRecords.length){
+            const sibDb = dbLoad(sibM.id);
+            const sibFp = r=>`${r.date}|${r.worker}|${r.mins}|${Math.round(r.qty)}`;
+            const sibExisting = new Set(sibDb.records.map(sibFp));
+            const sibNew = sibRecords.filter(r=>!sibExisting.has(sibFp(r)));
+            if(sibNew.length){
+              const sibUploadId='u'+Date.now()+'s';
+              sibDb.uploads.push({id:sibUploadId,name:file.name,date:new Date().toISOString(),
+                count:sibNew.length,op:sibM.ops[0],dupSkipped:sibRecords.length-sibNew.length,auto:true});
+              sibNew.forEach(r=>{ r.uploadId=sibUploadId; sibDb.records.push(r); });
+              dbSave(sibM.id, sibDb);
+            }
+          }
+        }
+      }
+
+      if(!records.length){
+        errEl.textContent=`Soubor neobsahuje záznamy pro operaci "${m.ops[0]}".`;
+        errEl.style.display='block';
+        dzSub.textContent='Soubor načten — žádné záznamy pro tento stroj';
+        // I přesto mohla sourozenecká data být uložena
+        if(m.sibling) renderDashboard();
+        return;
+      }
+      const op = m.ops[0];
+
+      const db = dbLoad(m.id);
+
+      // Detekce duplikátů — fingerprint z datum+pracovník+čas+množství
+      const fp = r=>`${r.date}|${r.worker}|${r.mins}|${Math.round(r.qty)}`;
+      const existing = new Set(db.records.map(fp));
+      const newRecs = records.filter(r=>!existing.has(fp(r)));
+      const dupCount = records.length - newRecs.length;
+
+      if(newRecs.length === 0){
+        errEl.textContent=`Všechny záznamy (${records.length}) již v databázi existují — soubor byl pravděpodobně nahrán dříve.`;
+        errEl.style.display='block';
+        dzSub.textContent='Žádná nová data — duplikát přeskočen';
+        document.getElementById(`${m.id}-dz-title`).textContent=file.name;
+        return;
+      }
+
+      const uploadId = 'u'+Date.now();
+      db.uploads.push({id:uploadId, name:file.name, date:new Date().toISOString(),
+        count:newRecs.length, op, dupSkipped:dupCount});
+      newRecs.forEach(r=>{ r.uploadId=uploadId; db.records.push(r); });
+      dbSave(m.id, db);
+
+      document.getElementById(`${m.id}-dz-title`).textContent='✓ '+file.name;
+      const dupNote = dupCount>0?` · přeskočeno duplikátů: ${dupCount}`:'';
+      dzSub.textContent=`${newRecs.length} záznamů přidáno${dupNote}`;
+      document.getElementById(`${m.id}-dz`).classList.add('loaded');
+      renderMachinePage(m.id);
+      renderDashboard();
+    }catch(err){
+      errEl.textContent='Chyba při čtení souboru: '+err.message;
+      errEl.style.display='block';
+      dzSub.textContent='Chyba načítání';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderMachinePage(machineId){
+  const m = MACHINES.find(m=>m.id===machineId);
+  const db = dbLoad(machineId);
+  const days = parseInt(document.getElementById(`${machineId}-period`)?.value)||0;
+
+  const records = db.records;
+  const stats = computeStats(records, days);
+
+  // ── Metrics
+  const metricsEl = document.getElementById(`${machineId}-metrics`);
+  if(metricsEl){
+    const vsStr = stats.vsBaseline!==null?`${stats.vsBaseline.toFixed(1)} %`:'—';
+    const vsColor = stats.vsBaseline===null?'var(--text)':stats.vsBaseline>=97?'var(--green)':stats.vsBaseline>=88?'var(--orange)':'var(--red)';
+    metricsEl.innerHTML=`
+      <div class="metric">
+        <div class="metric-label">Aktuální výkon</div>
+        <div class="metric-value">${fmtSpeed(stats.current)}</div>
+        <div class="metric-sub">${stats.monthly.length?monthName(stats.monthly[stats.monthly.length-1].ym):''}</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Baseline (medián)</div>
+        <div class="metric-value">${fmtSpeed(stats.baseline)}</div>
+        <div class="metric-sub">${stats.allSpeeds.length} měs. dat</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Výkon vs baseline</div>
+        <div class="metric-value" style="color:${vsColor}">${vsStr}</div>
+        <div class="metric-sub">${percentileBadge(stats.pRank,stats.p10,stats.p90,stats.current)}</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Trend</div>
+        <div class="metric-value" style="font-size:14px;margin-top:4px">
+          Týden: ${trendArrow(stats.weeklyTrend)}<br>
+          Měsíc: ${trendArrow(stats.monthlyTrend)}
+        </div>
+        <div class="metric-sub">&nbsp;</div>
+      </div>
+    `;
+  }
+
+  // ── Uploads
+  const uploadsEl = document.getElementById(`${machineId}-uploads`);
+  if(uploadsEl){
+    if(!db.uploads.length){
+      uploadsEl.innerHTML='<div class="empty"><div class="empty-icon">📭</div>Žádné soubory</div>';
+    } else {
+      uploadsEl.innerHTML = db.uploads.slice().reverse().map(u=>`
+        <div class="upload-item">
+          <div>
+            <div class="upload-name">${u.name}</div>
+            <div class="upload-meta">${new Date(u.date).toLocaleDateString('cs-CZ')} · ${u.count} záznamů${u.dupSkipped?` · <span style="color:var(--orange)">${u.dupSkipped} duplikátů přeskočeno</span>`:''}${u.op?' · <span style="color:var(--accent);font-family:var(--mono)">'+ u.op +'</span>':''}</div>
+          </div>
+          <button class="btn-del" onclick="deleteUpload('${machineId}','${u.id}')" title="Smazat upload">✕</button>
+        </div>
+      `).join('');
+    }
+  }
+
+  // ── Charts
+  buildMachineCharts(machineId, stats);
+
+  // ── Porovnání let (v záložce Výkon, vždy aktuální)
+  buildYearComparison(machineId, db.records);
+
+  // ── Workers
+  renderWorkers(machineId, db.records, days, stats.baseline);
+
+  // ── History table
+  renderHistoryTable(machineId, stats);
+}
+
+function deleteUpload(machineId, uploadId){
+  if(!confirm('Smazat tento upload a jeho záznamy?')) return;
+  dbDeleteUpload(machineId, uploadId);
+  renderMachinePage(machineId);
+  renderDashboard();
+}
+
+function switchMachineTab(machineId, tab, btn){
+  ['perf','workers','anomalies','history'].forEach(t=>{
+    const el=document.getElementById(`${machineId}-tab-${t}`);
+    if(el) el.style.display=t===tab?'block':'none';
+  });
+  btn.closest('.card').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  if(tab==='anomalies'){
+    const db=dbLoad(machineId);
+    buildAnomalies(machineId, db.records);
+  }
+}
+
+// ── Charts per machine
+function buildMachineCharts(machineId, stats){
+  const isDark=true;
+  const gc='rgba(255,255,255,0.05)';
+  const tc='#5c5a72';
+
+  const baseOpts={
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${Math.round(ctx.parsed.y).toLocaleString('cs-CZ')} ks/h`}}},
+    scales:{
+      x:{ticks:{color:tc,font:{size:10},maxRotation:45},grid:{color:gc}},
+      y:{ticks:{color:tc,font:{size:10},callback:v=>v.toLocaleString('cs-CZ')},grid:{color:gc}}
+    }
+  };
+
+  // Monthly chart
+  const mc = document.getElementById(`${machineId}-chart-monthly`);
+  if(mc){
+    if(machineCharts[`${machineId}-monthly`]) machineCharts[`${machineId}-monthly`].destroy();
+    const mData = stats.monthly.map(mo=>({x:monthName(mo.ym),y:Math.round(mo.speed)}));
+    const blVal = stats.baseline;
+    machineCharts[`${machineId}-monthly`] = new Chart(mc.getContext('2d'),{
+      type:'bar',
+      data:{
+        labels:mData.map(d=>d.x),
+        datasets:[
+          {
+            label:'ks/h',data:mData.map(d=>d.y),
+            backgroundColor:mData.map(d=>d.y>=(blVal||0)?'rgba(79,142,247,0.7)':'rgba(239,68,68,0.5)'),
+            borderRadius:3,borderSkipped:false,
+          },
+          ...(blVal?[{
+            label:'Baseline',
+            data:mData.map(()=>Math.round(blVal)),
+            type:'line',borderColor:'rgba(62,207,142,0.6)',borderWidth:1.5,
+            borderDash:[4,4],pointRadius:0,backgroundColor:'transparent',
+          }]:[])
+        ]
+      },
+      options:{...baseOpts,plugins:{...baseOpts.plugins,legend:{display:!!blVal,labels:{color:'#9b98b0',font:{size:10}}}}}
+    });
+  }
+
+  // Rolling chart
+  const rc = document.getElementById(`${machineId}-chart-rolling`);
+  if(rc){
+    if(machineCharts[`${machineId}-rolling`]) machineCharts[`${machineId}-rolling`].destroy();
+    if(stats.monthly.length){
+      const raw=stats.monthly.map(mo=>({x:monthName(mo.ym),y:Math.round(mo.speed)}));
+      const rolled=rollingAvg(raw,4);
+      machineCharts[`${machineId}-rolling`]=new Chart(rc.getContext('2d'),{
+        type:'line',
+        data:{
+          labels:rolled.map(d=>d.x),
+          datasets:[{
+            label:'Rolling 4M průměr',data:rolled.map(d=>d.y),
+            borderColor:'#4f8ef7',backgroundColor:'rgba(79,142,247,0.08)',
+            borderWidth:2,pointRadius:3,tension:0.4,fill:true,
+          }]
+        },
+        options:{...baseOpts}
+      });
+    }
+  }
+
+  // Weekly chart
+  const wc = document.getElementById(`${machineId}-chart-weekly`);
+  if(wc){
+    if(machineCharts[`${machineId}-weekly`]) machineCharts[`${machineId}-weekly`].destroy();
+    const lastWeeks = stats.weekly.slice(-16);
+    if(lastWeeks.length){
+      machineCharts[`${machineId}-weekly`]=new Chart(wc.getContext('2d'),{
+        type:'line',
+        data:{
+          labels:lastWeeks.map(w=>w.week),
+          datasets:[{
+            label:'ks/h',data:lastWeeks.map(w=>Math.round(w.speed)),
+            borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,0.07)',
+            borderWidth:2,pointRadius:2,tension:0.4,fill:true,
+          }]
+        },
+        options:{...baseOpts,scales:{...baseOpts.scales,x:{...baseOpts.scales.x,ticks:{...baseOpts.scales.x.ticks,maxRotation:90}}}}
+      });
+    }
+  }
+}
+
+// ── Workers
+// Aktivní view pro každý stroj ('celkem' nebo 'mesice')
+const workerViews = {};
+
+function setWorkerView(machineId, view, btn){
+  workerViews[machineId] = view;
+  document.querySelectorAll(`#page-${machineId} .wv-btn`).forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(`${machineId}-worker-celkem`).style.display = view==='celkem'?'block':'none';
+  document.getElementById(`${machineId}-worker-mesice`).style.display = view==='mesice'?'block':'none';
+}
+
+function getMinHours(machineId){
+  const el = document.getElementById(`${machineId}-min-hours`);
+  return el ? parseFloat(el.value)||0 : 10;
+}
+
+function onMinHoursChange(machineId, val){
+  const label = document.getElementById(`${machineId}-min-hours-val`);
+  if(label) label.textContent = val+' h';
+  // Překresli pracovníky s novým prahem — použij uložená data
+  const db = dbLoad(machineId);
+  const days = parseInt(document.getElementById(`${machineId}-period`)?.value)||0;
+  const m = MACHINES.find(x=>x.id===machineId);
+  const statsW = computeStats(db.records, days);
+  renderWorkers(machineId, db.records, days, statsW.baseline);
+}
+
+function renderWorkers(machineId, allRecords, days, baseline){
+  const filtered = filterByDays(allRecords, days);
+  const minH = getMinHours(machineId);
+
+  // Spočítej hodiny pro každého pracovníka
+  const workerMins = {};
+  filtered.forEach(r=>{
+    if(!workerMins[r.worker]) workerMins[r.worker]=0;
+    workerMins[r.worker]+=r.mins;
+  });
+
+  // Rozdělení: nad prahem = viditelní, pod prahem = skrytí
+  const allWorkers = [...new Set(filtered.map(r=>r.worker))].sort();
+  const visibleWorkers = allWorkers.filter(w=>(workerMins[w]||0)/60 >= minH);
+  const hiddenWorkers  = allWorkers.filter(w=>(workerMins[w]||0)/60 <  minH);
+
+  const chipsEl = document.getElementById(`${machineId}-worker-chips`);
+  if(!chipsEl) return;
+
+  const noDataEl = document.getElementById(`${machineId}-worker-celkem`);
+  chipsEl.innerHTML='';
+
+  if(!allWorkers.length){
+    if(noDataEl) noDataEl.innerHTML='<div class="empty"><div class="empty-icon">👥</div>Žádná data o pracovnících</div>';
+    return;
+  }
+
+  const activeWorkers = new Set(visibleWorkers);
+
+  // Chipy jen pro viditelné pracovníky
+  visibleWorkers.forEach(w=>{
+    const chip=document.createElement('label');
+    chip.className='chip';
+    const cb=document.createElement('input');
+    cb.type='checkbox';cb.value=w;cb.checked=true;
+    cb.addEventListener('change',()=>{
+      chip.classList.toggle('off',!cb.checked);
+      if(cb.checked) activeWorkers.add(w); else activeWorkers.delete(w);
+      buildWorkerTable(machineId, filtered, baseline, activeWorkers);
+      buildWorkerMonthly(machineId, filtered, baseline, activeWorkers);
+    });
+    chip.appendChild(cb);
+    chip.appendChild(document.createTextNode(w));
+    chipsEl.appendChild(chip);
+  });
+
+  // Info o skrytých pracovnících
+  if(hiddenWorkers.length){
+    const info = document.createElement('span');
+    info.style.cssText='font-size:11px;color:var(--text3);font-family:var(--mono);padding:4px 0;display:inline-block';
+    info.textContent = `+ ${hiddenWorkers.length} skrytých (< ${minH} h): ${hiddenWorkers.join(', ')}`;
+    chipsEl.appendChild(info);
+  }
+
+  if(!visibleWorkers.length){
+    if(noDataEl) noDataEl.innerHTML=`<div class="empty"><div class="empty-icon">👥</div>Žádný pracovník nesplňuje minimální práh ${minH} h.<br><small style="color:var(--text3)">Snižte práh pomocí slideru výše.</small></div>`;
+    return;
+  }
+
+  buildWorkerTable(machineId, filtered, baseline, activeWorkers);
+  buildWorkerMonthly(machineId, filtered, baseline, activeWorkers);
+}
+
+function buildWorkerTable(machineId, records, baseline, activeWorkers){
+  const contentEl = document.getElementById(`${machineId}-worker-celkem`);
+  if(!contentEl) return;
+  const workerData = aggByWorker(records, activeWorkers);
+  if(!workerData.length){contentEl.innerHTML='';return;}
+  const maxSpd = Math.max(...workerData.map(w=>w.speed),1);
+
+  let html='<div style="margin-bottom:1rem">';
+  workerData.forEach(w=>{
+    const pct = Math.round(w.speed/maxSpd*100);
+    const vsB = baseline?w.speed/baseline*100:null;
+    const vsColor = vsB===null?'var(--text2)':vsB>=97?'var(--green)':vsB>=88?'var(--orange)':'var(--red)';
+    html+=`<div class="w-row">
+      <span class="w-name" title="${w.worker}">${w.worker}</span>
+      <div class="w-bar-bg"><div class="w-bar-fill" style="width:${pct}%"></div></div>
+      <span class="w-speed">${fmt(w.speed)} ks/h</span>
+      <span class="w-vs" style="color:${vsColor}">${vsB!==null?vsB.toFixed(0)+'%':'—'}</span>
+    </div>`;
+  });
+  html+='</div>';
+  html+=`<div class="table-wrap"><table>
+    <thead><tr><th>Pracovník</th><th>Výkon ks/h</th><th>vs baseline</th><th>Hodin dat</th><th>Množství ks</th><th>Dnů</th></tr></thead>
+    <tbody>
+    ${workerData.map(w=>{
+      const vsB=baseline?w.speed/baseline*100:null;
+      const vsColor=vsB===null?'':vsB>=97?'color:var(--green)':vsB>=88?'color:var(--orange)':'color:var(--red)';
+      return `<tr>
+        <td>${w.worker}</td>
+        <td>${fmt(w.speed)}</td>
+        <td style="${vsColor}">${vsB!==null?vsB.toFixed(1)+' %':'—'}</td>
+        <td style="font-family:var(--mono)">${(w.mins/60).toFixed(1)}</td>
+        <td>${fmt(w.qty)}</td>
+        <td>${w.days}</td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table></div>`;
+  contentEl.innerHTML=html;
+}
+
+function buildWorkerMonthly(machineId, records, baseline, activeWorkers){
+  const contentEl = document.getElementById(`${machineId}-worker-mesice`);
+  if(!contentEl) return;
+
+  // Agregace: worker → měsíc → {qty, mins}
+  const byWorkerMonth = {};
+  const byMonth = {};
+
+  records.forEach(r=>{
+    if(!activeWorkers.has(r.worker)) return;
+    if(!byWorkerMonth[r.worker]) byWorkerMonth[r.worker]={};
+    if(!byWorkerMonth[r.worker][r.ym]) byWorkerMonth[r.worker][r.ym]={qty:0,mins:0};
+    byWorkerMonth[r.worker][r.ym].qty += r.qty;
+    byWorkerMonth[r.worker][r.ym].mins += r.mins;
+
+    if(!byMonth[r.ym]) byMonth[r.ym]={qty:0,mins:0};
+    byMonth[r.ym].qty += r.qty;
+    byMonth[r.ym].mins += r.mins;
+  });
+
+  const months = Object.keys(byMonth).sort().reverse(); // nejnovější nahoře
+  const workers = [...activeWorkers].filter(w=>byWorkerMonth[w]).sort();
+
+  if(!months.length){contentEl.innerHTML='<div class="empty"><div class="empty-icon">📅</div>Žádná data</div>';return;}
+
+  // Max rychlost přes všechna data — pro proporcionální bary
+  const allSpeeds = months.flatMap(ym=>
+    workers.map(w=>{
+      const d=byWorkerMonth[w]?.[ym];
+      return d&&d.mins>0?d.qty/d.mins*60:0;
+    })
+  );
+  const maxSpd = Math.max(...allSpeeds, 1);
+
+  let html='';
+  months.forEach(ym=>{
+    const mData = byMonth[ym];
+    const mSpeed = mData.mins>0 ? mData.qty/mData.mins*60 : 0;
+    const mVsB = baseline ? mSpeed/baseline*100 : null;
+    const mVsColor = mVsB===null?'var(--text3)':mVsB>=97?'var(--green)':mVsB>=88?'var(--orange)':'var(--red)';
+
+    html+=`<div class="wm-section">
+      <div class="wm-head">
+        <span>${monthName(ym)}</span>
+        <span class="wm-head-speed" style="color:${mVsColor}">
+          Stroj: ${fmt(mSpeed)} ks/h${mVsB!==null?' · '+mVsB.toFixed(0)+' % bl':''}
+        </span>
+      </div>`;
+
+    // Řádek "Stroj celkem"
+    const totPct = Math.round(mSpeed/maxSpd*100);
+    html+=`<div class="wm-row">
+      <span class="wm-name total">Stroj celkem</span>
+      <div class="wm-bar-bg"><div class="wm-bar-fill total" style="width:${totPct}%"></div></div>
+      <span class="wm-speed total">${fmt(mSpeed)} ks/h</span>
+      <span class="wm-vs">—</span>
+    </div>`;
+
+    // Jednotliví pracovníci
+    workers.forEach(w=>{
+      const d = byWorkerMonth[w]?.[ym];
+      if(!d) return;
+      const spd = d.mins>0 ? d.qty/d.mins*60 : 0;
+      const pct = Math.round(spd/maxSpd*100);
+      const vsB = baseline ? spd/baseline*100 : null;
+      const vsColor = vsB===null?'var(--text3)':vsB>=97?'var(--green)':vsB>=88?'var(--orange)':'var(--red)';
+      html+=`<div class="wm-row">
+        <span class="wm-name" title="${w}">${w}</span>
+        <div class="wm-bar-bg"><div class="wm-bar-fill" style="width:${pct}%"></div></div>
+        <span class="wm-speed">${fmt(spd)} ks/h</span>
+        <span class="wm-vs" style="color:${vsColor}">${vsB!==null?vsB.toFixed(0)+'%':'—'}</span>
+      </div>`;
+    });
+
+    html+='</div>';
+  });
+  contentEl.innerHTML=html;
+}
+
+function renderHistoryTable(machineId, stats){
+  const el = document.getElementById(`${machineId}-history-table`);
+  if(!el) return;
+  if(!stats.monthly.length){
+    el.innerHTML='<div class="empty"><div class="empty-icon">📊</div>Žádná data</div>';
+    return;
+  }
+  const bl = stats.baseline;
+  el.innerHTML=`<table>
+    <thead><tr><th>Měsíc</th><th>Výkon ks/h</th><th>vs baseline</th><th>Množství ks</th><th>Čas h</th></tr></thead>
+    <tbody>
+    ${[...stats.monthly].reverse().map(mo=>{
+      const vsB=bl?mo.speed/bl*100:null;
+      const vsColor=vsB===null?'':vsB>=97?'color:var(--green)':vsB>=88?'color:var(--orange)':'color:var(--red)';
+      return `<tr>
+        <td>${monthName(mo.ym)}</td>
+        <td><strong>${fmt(mo.speed)}</strong></td>
+        <td style="${vsColor}">${vsB!==null?vsB.toFixed(1)+' %':'—'}</td>
+        <td>${fmt(mo.qty)}</td>
+        <td>${(mo.mins/60).toFixed(1)}</td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table>`;
+}
+
+// ════════════════════════════════════════════════════════════
+// POROVNÁNÍ LET
+// ════════════════════════════════════════════════════════════
+function buildYearComparison(machineId, records){
+  const el = document.getElementById(`${machineId}-years-content`);
+  if(!el) return;
+  if(!records.length){ el.innerHTML='<div class="empty"><div class="empty-icon">📅</div>Žádná data</div>'; return; }
+
+  const byYM = {};
+  records.forEach(r=>{
+    if(!byYM[r.ym]) byYM[r.ym]={qty:0,mins:0};
+    byYM[r.ym].qty+=r.qty; byYM[r.ym].mins+=r.mins;
+  });
+
+  const years = [...new Set(Object.keys(byYM).map(ym=>ym.slice(0,4)))].sort();
+  const allMonths = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+  const MN = ['Led','Úno','Bře','Dub','Kvě','Čvn','Čvc','Srp','Zář','Říj','Lis','Pro'];
+
+  if(years.length < 2){
+    el.innerHTML='<div class="empty" style="padding:1.5rem"><div class="empty-icon">📅</div>Pro porovnání jsou potřeba data alespoň ze dvou let.</div>';
+    return;
+  }
+
+  // ── Graf překrytí let (první) ──
+  let html=`<div class="card-title" style="margin-bottom:.5rem">Vývoj po měsících — překrytí let</div>`;
+  html+=`<div class="chart-wrap" style="height:260px;margin-bottom:1.25rem"><canvas id="${machineId}-chart-years"></canvas></div>`;
+
+  // ── Tabulka měsíc × rok (druhá) ──
+  html+=`<div class="card-title" style="margin-bottom:.75rem">Porovnání po měsících <span style="font-weight:400">(ks/h)</span></div>`;
+  html+='<div class="table-wrap"><table><thead><tr><th>Měsíc</th>';
+  years.forEach(yr=>{ html+=`<th>${yr}</th>`; });
+  if(years.length>=2) html+=`<th>Δ ${years[years.length-2]}→${years[years.length-1]}</th>`;
+  html+='</tr></thead><tbody>';
+  allMonths.forEach((mo,mi)=>{
+    const rowSpeeds = years.map(yr=>{
+      const ym=`${yr}-${mo}`;
+      return byYM[ym]&&byYM[ym].mins>0?byYM[ym].qty/byYM[ym].mins*60:null;
+    });
+    if(rowSpeeds.every(s=>s===null)) return;
+    html+=`<tr><td>${MN[mi]}</td>`;
+    rowSpeeds.forEach(s=>{ html+=`<td>${s!==null?`<strong>${fmt(s)}</strong>`:'—'}</td>`; });
+    if(years.length>=2){
+      const prev=rowSpeeds[rowSpeeds.length-2], last=rowSpeeds[rowSpeeds.length-1];
+      if(prev!==null&&last!==null){
+        const d=last-prev; const pct=(d/prev*100).toFixed(1);
+        const col=d>0?'var(--green)':d<0?'var(--red)':'var(--text3)';
+        html+=`<td style="color:${col}">${d>=0?'+':''}${fmt(d)} (${d>=0?'+':''}${pct}%)</td>`;
+      } else html+=`<td>—</td>`;
+    }
+    html+='</tr>';
+  });
+  // Řádek celkem
+  html+='<tr style="border-top:1px solid var(--border2)"><td><strong>Rok celkem</strong></td>';
+  years.forEach(yr=>{
+    const r=records.filter(x=>x.ym.startsWith(yr));
+    const tq=r.reduce((s,x)=>s+x.qty,0), tm=r.reduce((s,x)=>s+x.mins,0);
+    html+=`<td><strong>${tm>0?fmt(tq/tm*60)+' ks/h':'—'}</strong></td>`;
+  });
+  if(years.length>=2){
+    const sp=yr=>{const r=records.filter(x=>x.ym.startsWith(yr));const tq=r.reduce((s,x)=>s+x.qty,0);const tm=r.reduce((s,x)=>s+x.mins,0);return tm>0?tq/tm*60:null;};
+    const p=sp(years[years.length-2]),l=sp(years[years.length-1]);
+    if(p&&l){const d=l-p;const col=d>0?'var(--green)':d<0?'var(--red)':'var(--text3)';
+      html+=`<td style="color:${col}"><strong>${d>=0?'+':''}${fmt(d)} (${d>=0?'+':''}${(d/p*100).toFixed(1)}%)</strong></td>`;}
+    else html+=`<td>—</td>`;
+  }
+  html+='</tr></tbody></table></div>';
+
+  el.innerHTML=html;
+
+  const colors=['#4f8ef7','#3ecf8e','#f59e0b','#ef4444','#a855f7'];
+  const datasets=years.map((yr,i)=>({
+    label:yr,
+    data:allMonths.map(mo=>{const ym=`${yr}-${mo}`;return byYM[ym]&&byYM[ym].mins>0?Math.round(byYM[ym].qty/byYM[ym].mins*60):null;}),
+    borderColor:colors[i%colors.length],backgroundColor:'transparent',
+    borderWidth:2,pointRadius:4,tension:.35,spanGaps:false,
+  }));
+  const ctx=document.getElementById(`${machineId}-chart-years`);
+  if(!ctx) return;
+  if(machineCharts[`${machineId}-years`]) machineCharts[`${machineId}-years`].destroy();
+  machineCharts[`${machineId}-years`]=new Chart(ctx.getContext('2d'),{
+    type:'line',data:{labels:MN,datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#9b98b0',font:{size:11}}},
+        tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.parsed.y!==null?c.parsed.y.toLocaleString('cs-CZ')+' ks/h':'—'}`}}},
+      scales:{x:{ticks:{color:'#5c5a72',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'}},
+        y:{ticks:{color:'#5c5a72',font:{size:11},callback:v=>v.toLocaleString('cs-CZ')},grid:{color:'rgba(255,255,255,0.05)'}}}}
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+// DETEKCE ANOMÁLIÍ
+// ════════════════════════════════════════════════════════════
+function buildAnomalies(machineId, records){
+  const el = document.getElementById(`${machineId}-anomalies`);
+  if(!el){return;}
+  if(!records.length){el.innerHTML='';return;}
+
+  const LONG_MINS = 10*60;   // záznamy delší než 10 h jsou podezřelé
+  const LOW_SPEED = 50;      // pod 50 ks/h při >60 min = možný prostoj
+  const MIN_MINS_LOW = 60;
+  const MONTH_DEV = 60;      // měsíc odchýlený o >60 % od mediánu
+
+  // Měsíční medián
+  const byYM={};
+  records.forEach(r=>{if(!byYM[r.ym])byYM[r.ym]={qty:0,mins:0};byYM[r.ym].qty+=r.qty;byYM[r.ym].mins+=r.mins;});
+  const mSpeeds=Object.entries(byYM).map(([ym,d])=>d.mins>0?d.qty/d.mins*60:0).filter(s=>s>0).sort((a,b)=>a-b);
+  const mMedian=mSpeeds.length?mSpeeds[Math.floor(mSpeeds.length/2)]:null;
+
+  const anomalies=[];
+
+  records.forEach(r=>{
+    const spd=r.qty/r.mins*60;
+    if(r.mins>LONG_MINS){
+      anomalies.push({
+        sev:'warn',
+        label:`Neobvykle dlouhý záznam — ${(r.mins/60).toFixed(1)} h`,
+        detail:`${r.date} · ${r.worker} · ${fmt(r.qty)} ks · ${fmt(spd)} ks/h — stroj mohl zůstat zapnutý`
+      });
+    }
+    if(r.mins>=MIN_MINS_LOW&&spd<LOW_SPEED&&spd>0){
+      anomalies.push({
+        sev:'error',
+        label:`Velmi nízká rychlost — ${fmt(spd)} ks/h za ${(r.mins/60).toFixed(1)} h`,
+        detail:`${r.date} · ${r.worker} · ${fmt(r.qty)} ks — možný prostoj nebo chyba záznamu`
+      });
+    }
+  });
+
+  if(mMedian){
+    Object.entries(byYM).forEach(([ym,d])=>{
+      if(!d.mins) return;
+      const spd=d.qty/d.mins*60;
+      const dev=Math.abs(spd-mMedian)/mMedian*100;
+      if(dev>MONTH_DEV){
+        const dir=spd>mMedian?'Neobvykle vysoký':'Neobvykle nízký';
+        anomalies.push({
+          sev:spd<mMedian?'error':'warn',
+          label:`${dir} výkon — ${monthName(ym)}: ${fmt(spd)} ks/h`,
+          detail:`Medián: ${fmt(mMedian)} ks/h · odchylka: ${dev.toFixed(0)} %`
+        });
+      }
+    });
+  }
+
+  if(!anomalies.length){el.innerHTML='';return;}
+  anomalies.sort((a,b)=>(a.sev==='error'?0:1)-(b.sev==='error'?0:1));
+
+  el.innerHTML=`<div class="anomaly-banner">
+    <div class="anomaly-title">⚠ Nalezeno ${anomalies.length} potenciálních anomálií v datech</div>
+    ${anomalies.slice(0,10).map(a=>`
+      <div class="anomaly-item">
+        <span class="anomaly-val" style="color:${a.sev==='error'?'var(--red)':'var(--orange)'}">${a.label}</span><br>
+        <span class="anomaly-worker">${a.detail}</span>
+      </div>`).join('')}
+    ${anomalies.length>10?`<div style="font-size:11px;color:var(--text3);margin-top:6px">+ ${anomalies.length-10} dalších — zobrazte v záložce Data po měsících</div>`:''}
+  </div>`;
+}
+
+// ════════════════════════════════════════════════════════════
+// EXPORT
+// ════════════════════════════════════════════════════════════
+function exportExcel(){
+  const wb = XLSX.utils.book_new();
+  MACHINES.forEach(m=>{
+    const db = dbLoad(m.id);
+    const stats = computeStats(db.records,0);
+    if(!stats.monthly.length) return;
+    const rows=[['Měsíc','Výkon ks/h','vs Baseline %','Množství ks','Čas h']];
+    stats.monthly.forEach(mo=>{
+      const vsB=stats.baseline?+(mo.speed/stats.baseline*100).toFixed(1):null;
+      rows.push([monthName(mo.ym),Math.round(mo.speed),vsB,Math.round(mo.qty),+(mo.mins/60).toFixed(1)]);
+    });
+    rows.push([]);
+    rows.push(['Baseline (medián)',Math.round(stats.baseline||0)]);
+    const ws=XLSX.utils.aoa_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb,ws,m.name);
+  });
+  XLSX.writeFile(wb,`integraf-kpi-${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+// ════════════════════════════════════════════════════════════
+// ZÁLOHA & OBNOVA DAT
+// ════════════════════════════════════════════════════════════
+function backupData(){
+  const backup = { version:1, date: new Date().toISOString(), machines:{}, ops:{} };
+  MACHINES.forEach(m=>{
+    backup.machines[m.id] = dbLoad(m.id);
+    const op = getOp(m.id);
+    if(op) backup.ops[m.id] = op;
+  });
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `integraf-kpi-zaloha-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+
+function restoreData(input){
+  const file = input.files[0];
+  if(!file) return;
+  if(!confirm(`Obnovit data ze souboru "${file.name}"?\n\nStávající data budou přepsána.`)) { input.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const backup = JSON.parse(e.target.result);
+      if(!backup.version || !backup.machines) throw new Error('Neplatný formát zálohy.');
+      MACHINES.forEach(m=>{
+        if(backup.machines[m.id]) dbSave(m.id, backup.machines[m.id]);
+        if(backup.ops && backup.ops[m.id]) saveOp(m.id, backup.ops[m.id]);
+      });
+      // Obnov op inputy
+      MACHINES.forEach(m=>{
+        const inp = document.getElementById(`${m.id}-op-input`);
+        if(inp){ inp.value = getOp(m.id); updateOpDisplay(m.id); }
+      });
+      renderDashboard();
+      MACHINES.forEach(m=>renderMachinePage(m.id));
+      alert(`Data obnovena ze zálohy ${backup.date ? new Date(backup.date).toLocaleString('cs-CZ') : ''}`);
+    }catch(err){
+      alert('Chyba při obnově dat: ' + err.message);
+    }
+    input.value='';
+  };
+  reader.readAsText(file);
+}
+
+// ════════════════════════════════════════════════════════════
+// PDF EXPORT
+// ════════════════════════════════════════════════════════════
+function exportPDF(){
+  // Otevři modal s výběrem strojů
+  const sel = document.getElementById('pdf-machine-select');
+  sel.innerHTML='';
+  MACHINES.forEach(m=>{
+    const db = dbLoad(m.id);
+    const hasData = db.records.length > 0;
+    const label = document.createElement('label');
+    label.style.cssText='display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:4px 0;'+(hasData?'color:var(--text)':'color:var(--text3)');
+    const cb = document.createElement('input');
+    cb.type='checkbox'; cb.value=m.id; cb.checked=hasData; cb.disabled=!hasData;
+    cb.style.accentColor='var(--accent)';
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(m.name + (hasData?` (${db.records.length} zázn.)`:' — bez dat')));
+    sel.appendChild(label);
+  });
+  document.getElementById('pdf-modal-body').textContent='Vyberte stroje pro export:';
+  document.getElementById('pdf-progress-text').style.display='none';
+  document.getElementById('pdf-progress-bar').style.display='none';
+  document.getElementById('pdf-start-btn').disabled=false;
+  document.getElementById('pdf-start-btn').textContent='Generovat PDF';
+  document.getElementById('pdf-modal').classList.add('open');
+}
+
+function closePdfModal(){
+  document.getElementById('pdf-modal').classList.remove('open');
+}
+
+async function startPdfExport(){
+  const checked = [...document.querySelectorAll('#pdf-machine-select input:checked')].map(cb=>cb.value);
+  if(!checked.length){ alert('Vyberte alespoň jeden stroj.'); return; }
+
+  document.getElementById('pdf-start-btn').disabled=true;
+  document.getElementById('pdf-start-btn').textContent='Generuji…';
+  document.getElementById('pdf-progress-text').style.display='block';
+  document.getElementById('pdf-progress-bar').style.display='block';
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+  const PW = 297, PH = 210; // A4 landscape mm
+  const MARGIN = 12;
+
+  function setProgress(pct, text){
+    document.getElementById('pdf-progress-fill').style.width=pct+'%';
+    document.getElementById('pdf-progress-text').textContent=text;
+  }
+
+  function pdfHeader(pdf, machineName, pageLabel){
+    pdf.setFillColor(15,17,23);
+    pdf.rect(0,0,PW,PH,'F');
+    // Top bar
+    pdf.setFillColor(24,28,39);
+    pdf.rect(0,0,PW,14,'F');
+    pdf.setFontSize(9); pdf.setTextColor(92,90,114);
+    pdf.setFont('helvetica','normal');
+    pdf.text('INTEGRAF // KPI', MARGIN, 9);
+    pdf.setTextColor(79,142,247);
+    pdf.setFontSize(11); pdf.setFont('helvetica','bold');
+    pdf.text(machineName, MARGIN+35, 9);
+    pdf.setTextColor(92,90,114); pdf.setFontSize(8); pdf.setFont('helvetica','normal');
+    pdf.text(pageLabel, PW-MARGIN, 9, {align:'right'});
+    pdf.text(new Date().toLocaleDateString('cs-CZ'), PW-MARGIN-30, 9, {align:'right'});
+  }
+
+  // Získá PNG data přímo z Chart.js instance (spolehlivější než html2canvas)
+  function chartToPng(machineId, suffix){
+    const key = `${machineId}-${suffix}`;
+    const chart = machineCharts[key];
+    if(!chart) return null;
+    try{ return chart.toBase64Image('image/png', 1); }
+    catch(e){ return null; }
+  }
+
+  function addChartImg(pdf, imgData, x, y, w, h){
+    if(!imgData) return;
+    // Přidej tmavé pozadí
+    pdf.setFillColor(24,28,39);
+    pdf.roundedRect(x, y, w, h, 2, 2, 'F');
+    // Vykresli graf — zachovej poměr stran
+    const tmpImg = new Image();
+    tmpImg.src = imgData;
+    const natW = tmpImg.naturalWidth || 800;
+    const natH = tmpImg.naturalHeight || 400;
+    const ratio = natW / natH;
+    let drawW = w - 4, drawH = h - 4;
+    if(drawW / drawH > ratio) drawW = drawH * ratio;
+    else drawH = drawW / ratio;
+    const ox = (w - drawW) / 2;
+    const oy = (h - drawH) / 2;
+    pdf.addImage(imgData, 'PNG', x + ox, y + oy, drawW, drawH);
+  }
+
+  function pdfChartLabel(pdf, text, x, y, rightText=''){
+    pdf.setFontSize(6.5); pdf.setFont('helvetica','bold'); pdf.setTextColor(92,90,114);
+    pdf.text(text, x, y);
+    if(rightText){
+      pdf.setTextColor(155,152,176); pdf.setFont('helvetica','normal');
+      pdf.text(rightText, PW-MARGIN, y, {align:'right'});
+    }
+  }
+
+  let isFirst = true;
+  for(let mi=0; mi<checked.length; mi++){
+    const machineId = checked[mi];
+    const m = MACHINES.find(x=>x.id===machineId);
+    const db = dbLoad(machineId);
+    const stats = computeStats(db.records, 0);
+    setProgress(Math.round((mi/checked.length)*90), `Generuji ${m.name}…`);
+
+    // Vykresl stránku stroje (aby byly Chart instance aktuální)
+    showPage(machineId, document.getElementById('tab-'+machineId));
+    renderMachinePage(machineId);
+    await new Promise(r=>setTimeout(r,350));
+
+    // Získej PNG z Chart.js instancí
+    const imgMonthly = chartToPng(machineId, 'monthly');
+    const imgRolling  = chartToPng(machineId, 'rolling');
+    const imgWeekly   = chartToPng(machineId, 'weekly');
+
+    if(!isFirst) pdf.addPage();
+    isFirst = false;
+
+    // ══ STRANA 1: Grafy (layout jako v aplikaci) ══
+    pdfHeader(pdf, m.name, 'Výkon — přehled grafů');
+
+    const CT = 16;  // content top
+    const CW = PW - MARGIN*2;
+    const GAP = 5;
+
+    // Metriky strip hned pod headerem
+    const mstripY = CT;
+    const mstripH = 10;
+    pdf.setFillColor(30,35,48);
+    pdf.roundedRect(MARGIN, mstripY, CW, mstripH, 2,2,'F');
+    const vsB = stats.vsBaseline;
+    const vsColor = vsB===null?[92,90,114]:vsB>=97?[62,207,142]:vsB>=88?[245,158,11]:[239,68,68];
+    const metItems = [
+      ['AKTUÁLNÍ VÝKON', stats.current?`${Math.round(stats.current).toLocaleString('cs-CZ')} ks/h`:'—', [232,230,240]],
+      ['BASELINE (MEDIÁN)', stats.baseline?`${Math.round(stats.baseline).toLocaleString('cs-CZ')} ks/h`:'—', [155,152,176]],
+      ['VS BASELINE', vsB!==null?`${vsB.toFixed(1)} %`:'—', vsColor],
+      ['TREND MĚSÍC', stats.monthlyTrend!==null?`${stats.monthlyTrend>=0?'+':''}${stats.monthlyTrend.toFixed(1)} %`:'—',
+        stats.monthlyTrend===null?[92,90,114]:stats.monthlyTrend>2?[62,207,142]:stats.monthlyTrend<-2?[239,68,68]:[155,152,176]],
+      ['TREND TÝDEN', stats.weeklyTrend!==null?`${stats.weeklyTrend>=0?'+':''}${stats.weeklyTrend.toFixed(1)} %`:'—',
+        stats.weeklyTrend===null?[92,90,114]:stats.weeklyTrend>2?[62,207,142]:stats.weeklyTrend<-2?[239,68,68]:[155,152,176]],
+    ];
+    const mColW = CW / metItems.length;
+    metItems.forEach(([label,val,color],i)=>{
+      const cx = MARGIN + i*mColW + mColW/2;
+      pdf.setTextColor(92,90,114); pdf.setFontSize(5.5); pdf.setFont('helvetica','normal');
+      pdf.text(label, cx, mstripY+4, {align:'center'});
+      pdf.setTextColor(...color); pdf.setFontSize(7.5); pdf.setFont('helvetica','bold');
+      pdf.text(val, cx, mstripY+8.5, {align:'center'});
+    });
+
+    // Grafy — horní řada (monthly + rolling vedle sebe)
+    const grafY1 = mstripY + mstripH + GAP;
+    const halfW = (CW - GAP) / 2;
+    const rowH1 = (PH - grafY1 - MARGIN - GAP - 12) * 0.57;
+
+    pdfChartLabel(pdf, 'VÝVOJ VÝKONU (KS/H PO MĚSÍCÍCH)', MARGIN, grafY1+4.5,
+      stats.baseline?`Baseline: ${Math.round(stats.baseline).toLocaleString('cs-CZ')} ks/h`:'');
+    pdfChartLabel(pdf, 'ROLLING PRŮMĚR (4MĚSÍČNÍ OKNO)', MARGIN+halfW+GAP, grafY1+4.5);
+
+    addChartImg(pdf, imgMonthly, MARGIN,            grafY1+6, halfW, rowH1);
+    addChartImg(pdf, imgRolling,  MARGIN+halfW+GAP, grafY1+6, halfW, rowH1);
+
+    // Spodní graf — týdenní přes celou šířku
+    const grafY2 = grafY1 + 6 + rowH1 + GAP;
+    const rowH2 = PH - grafY2 - MARGIN - 6;
+    pdfChartLabel(pdf, 'TÝDENNÍ VÝVOJ (POSLEDNÍ DATA)', MARGIN, grafY2+4.5);
+    addChartImg(pdf, imgWeekly, MARGIN, grafY2+6, CW, rowH2);
+
+    // ══ STRANA 2: Data tabulka + pracovníci ══
+    pdf.addPage();
+    pdfHeader(pdf, m.name, 'Data po měsících — detail');
+
+    if(!stats.monthly.length){
+      pdf.setTextColor(92,90,114); pdf.setFontSize(11);
+      pdf.text('Žádná data', PW/2, PH/2, {align:'center'});
+      continue;
+    }
+
+    const tblStartY = 18;
+    // Rozdělení: tabulka měsíců vlevo, pracovníci vpravo
+    const tblW = 185;
+    const rightX = MARGIN + tblW + 8;
+    const rightW = PW - rightX - MARGIN;
+
+    // ── Tabulka měsíčních dat ──
+    const cols2 = ['Měsíc','Výkon ks/h','vs Baseline','Množství ks','Čas h'];
+    const colW2 = [36, 34, 34, 44, 28];  // součet = 176 < tblW
+    const rH = 6.5;
+
+    // Záhlaví
+    pdf.setFillColor(37,42,56);
+    pdf.rect(MARGIN, tblStartY, colW2.reduce((a,b)=>a+b), rH,'F');
+    pdf.setFontSize(6); pdf.setFont('helvetica','bold'); pdf.setTextColor(92,90,114);
+    let hx = MARGIN;
+    cols2.forEach((col,i)=>{
+      pdf.text(col.toUpperCase(), hx + colW2[i]/2, tblStartY+4, {align:'center'});
+      hx += colW2[i];
+    });
+
+    // Datové řádky (od nejnovějšího)
+    [...stats.monthly].reverse().forEach((mo,ri)=>{
+      const ry = tblStartY + (ri+1)*rH;
+      if(ry+rH > PH-MARGIN) return;
+      const rowRgb = ri%2===0?[24,28,39]:[28,33,46]; pdf.setFillColor(...rowRgb);
+      pdf.rect(MARGIN, ry, colW2.reduce((a,b)=>a+b), rH,'F');
+      const vsB2 = stats.baseline ? mo.speed/stats.baseline*100 : null;
+      const vsColor2 = vsB2===null?[155,152,176]:vsB2>=97?[62,207,142]:vsB2>=88?[245,158,11]:[239,68,68];
+      const cells2 = [
+        [monthName(mo.ym),                               [155,152,176]],
+        [Math.round(mo.speed).toLocaleString('cs-CZ'),   [232,230,240]],
+        [vsB2!==null?vsB2.toFixed(1)+' %':'—',           vsColor2     ],
+        [Math.round(mo.qty).toLocaleString('cs-CZ'),     [155,152,176]],
+        [(mo.mins/60).toFixed(1),                        [155,152,176]],
+      ];
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(6.5);
+      let cx3 = MARGIN;
+      cells2.forEach(([val,color],i)=>{
+        pdf.setTextColor(...color);
+        pdf.text(String(val), cx3+colW2[i]/2, ry+4.2, {align:'center'});
+        cx3 += colW2[i];
+      });
+    });
+
+    // ── Panel vpravo: Baseline + Pracovníci ──
+    // Baseline box
+    pdf.setFillColor(24,28,39);
+    pdf.roundedRect(rightX, tblStartY, rightW, 18, 2,2,'F');
+    pdf.setFillColor(79,142,247);
+    pdf.roundedRect(rightX, tblStartY, rightW, 2.5, 1,1,'F');
+    pdf.setFontSize(6); pdf.setTextColor(92,90,114); pdf.setFont('helvetica','bold');
+    pdf.text('BASELINE (MEDIÁN)', rightX+rightW/2, tblStartY+6, {align:'center'});
+    pdf.setFontSize(13); pdf.setTextColor(232,230,240); pdf.setFont('helvetica','bold');
+    pdf.text(`${Math.round(stats.baseline||0).toLocaleString('cs-CZ')} ks/h`, rightX+rightW/2, tblStartY+14, {align:'center'});
+
+    // Pracovníci — orientační výkon
+    const wData = aggByWorker(db.records, new Set([...new Set(db.records.map(r=>r.worker))]));
+    if(wData.length){
+      const maxWSpd = Math.max(...wData.map(x=>x.speed),1);
+      let wY = tblStartY + 24;
+      pdf.setFontSize(6); pdf.setTextColor(92,90,114); pdf.setFont('helvetica','bold');
+      pdf.text('PRACOVNÍCI — ORIENTAČNÍ VÝKON', rightX, wY);
+      pdf.setFontSize(5.5); pdf.setTextColor(92,90,114); pdf.setFont('helvetica','normal');
+      pdf.text('(více pracovníků/zakázku, různá náročnost)', rightX, wY+4);
+      wY += 9;
+
+      wData.forEach((w)=>{
+        if(wY+8 > PH-MARGIN) return;
+        const vsB3 = stats.baseline ? w.speed/stats.baseline*100 : null;
+        const wColor = vsB3===null?[155,152,176]:vsB3>=97?[62,207,142]:vsB3>=88?[245,158,11]:[239,68,68];
+        const shortName = w.worker.length>20?w.worker.slice(0,19)+'…':w.worker;
+
+        pdf.setTextColor(155,152,176); pdf.setFontSize(6.5); pdf.setFont('helvetica','normal');
+        pdf.text(shortName, rightX, wY+3);
+        pdf.setTextColor(...wColor); pdf.setFont('helvetica','bold');
+        pdf.text(`${Math.round(w.speed).toLocaleString('cs-CZ')} ks/h`, rightX+rightW, wY+3, {align:'right'});
+
+        // progress bar
+        const barY = wY+4.5;
+        const barTW = rightW;
+        pdf.setFillColor(37,42,56);
+        pdf.rect(rightX, barY, barTW, 2,'F');
+        pdf.setFillColor(...wColor);
+        pdf.rect(rightX, barY, barTW*(w.speed/maxWSpd), 2,'F');
+
+        if(vsB3!==null){
+          pdf.setTextColor(...wColor); pdf.setFontSize(5.5); pdf.setFont('helvetica','normal');
+          pdf.text(`${vsB3.toFixed(0)} % bl`, rightX+rightW/2, barY+5, {align:'center'});
+        }
+        wY += 10;
+      });
+    }
+  }
+
+  setProgress(100, 'Ukládám PDF…');
+  await new Promise(r=>setTimeout(r,200));
+  pdf.save(`integraf-kpi-${new Date().toISOString().slice(0,10)}.pdf`);
+  closePdfModal();
+  // Vrať se na dashboard
+  showPage('dashboard', document.querySelector('.nav-tab'));
+}
+
+// ════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════
+MACHINES.forEach(m=>{
+  // Nav tab
+  const tab=document.createElement('button');
+  tab.className='nav-tab';
+  tab.id='tab-'+m.id;
+  tab.textContent=m.name;
+  tab.onclick=()=>showPage(m.id,tab);
+  document.getElementById('nav-tabs').appendChild(tab);
+
+  // Page
+  initMachinePage(m);
+});
+
+// Initial render
+renderDashboard();
+
+// Render machine page on tab click
+MACHINES.forEach(m=>{
+  const tab = document.getElementById('tab-'+m.id);
+  if(!tab) return;
+  tab.onclick = ()=>{
+    showPage(m.id, tab);
+    renderMachinePage(m.id);
+  };
+});
+</script>
+</body>
+</html>
