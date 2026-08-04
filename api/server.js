@@ -8,7 +8,7 @@ const bcrypt = require("bcryptjs");
 const { pool, dbConfig } = require("./db");
 
 const app = express();
-app.use(express.json({ limit: "5mb" }));
+app.use(express.json({ limit: "50mb" }));
 
 // Sezení uložená v databázi (tabulku si store vytvoří sám).
 const sessionStore = new MySQLStore({

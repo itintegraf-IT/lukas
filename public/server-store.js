@@ -62,21 +62,26 @@
       if (inScope(rk)) mem[rk] = real.getItem(rk);
     }
     if (Object.keys(mem).length) {
-      syncReq("POST", "/api/save", JSON.stringify({ app: appKey, data: mem }));
+      var sr = syncReq("POST", "/api/save", JSON.stringify({ app: appKey, data: mem }));
+      if (sr.status < 200 || sr.status >= 300) console.error("BOBR: první uložení na server selhalo, HTTP", sr.status);
     }
   }
 
   // --- ukládání na server (odloženě po změnách) ---
-  var saveTimer = null;
+  var saveTimer = null, saveState = "";
+  function setSaveState(s){ saveState = s; var el = document.getElementById("bobrSave"); if (el){ el.textContent = s; el.style.color = (s.indexOf("neuloženo")>=0) ? "#d00" : "#2a7"; } }
   function scheduleSave(){
     if (!canEdit) return;
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function(){
       var payload = {};
       for (var k in mem) if (mem.hasOwnProperty(k)) payload[k] = mem[k];
+      setSaveState("ukládám…");
       fetch("/api/save", { method:"POST", credentials:"include",
         headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ app: appKey, data: payload }) }).catch(function(){});
+        body: JSON.stringify({ app: appKey, data: payload }) })
+        .then(function(r){ if (r.ok){ setSaveState("uloženo"); } else { console.error("BOBR: uložení selhalo, HTTP", r.status); setSaveState("⚠ neuloženo ("+r.status+")"); } })
+        .catch(function(e){ console.error("BOBR: uložení selhalo:", e); setSaveState("⚠ neuloženo"); });
     }, 600);
   }
 
@@ -104,10 +109,12 @@
     var bar = document.createElement("div");
     bar.style.cssText = "position:fixed;top:8px;right:10px;z-index:99999;display:flex;gap:6px;align-items:center;font:12px system-ui";
     bar.innerHTML =
+      '<span id="bobrSave" style="font:11px system-ui"></span>' +
       '<a href="index.html" style="color:#333;text-decoration:none;background:#fff;border:1px solid #ccc;border-radius:6px;padding:4px 8px">← BOBR</a>' +
       '<span style="background:#fff;border:1px solid #ccc;border-radius:6px;padding:4px 8px;color:#777">' + rl + '</span>' +
       '<button id="bobrLogout" style="background:#fff;border:1px solid #ccc;border-radius:6px;padding:4px 8px;cursor:pointer;color:#333">Odhlásit</button>';
     document.body.appendChild(bar);
+    setSaveState(saveState);
     document.getElementById("bobrLogout").onclick = function(){
       fetch("/api/logout", { method:"POST", credentials:"include" }).catch(function(){}).then(function(){ location.replace("index.html"); });
     };
