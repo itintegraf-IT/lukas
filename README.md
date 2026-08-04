@@ -7,7 +7,7 @@
 
 ## Aplikace a role
 - Role **view** = jen náhled, **edit** = úpravy a ukládání, **admin** = plný přístup ke všem aplikacím včetně **obnovy dat ze zálohy** (import), který ostatním není dostupný.
-- **Obsazení směn** a **produktivita** převedeny přímo. **KPI** a **Tiskové stroje** si drží data v mnoha klíčích `localStorage`, proto se zrcadlí na server přes `storage-sync.js` (jejich vnitřní logika zůstala nedotčená).
+- **Obsazení směn** a **produktivita** převedeny přímo. **KPI** a **Tiskové stroje** si drží data v mnoha klíčích `localStorage`, proto ukládají přímo na server přes `server-store.js` (data se drží v paměti a synchronizují se serverem, ne v úložišti prohlížeče – bez limitu velikosti; jejich vnitřní logika zůstala nedotčená).
 
 ## Struktura repozitáře
 ```
@@ -19,7 +19,7 @@ bobr/
 │  ├─ produktivita.html # Produktivita (kanál M) – jen přihlášení, nic neukládá
 │  ├─ stroje.html       # Tiskové stroje (kanál K) – zrcadlení localStorage
 │  ├─ api.js            # datová vrstva (smeny, produktivita)
-│  ├─ storage-sync.js   # zrcadlení localStorage na server (kpi, stroje)
+│  ├─ server-store.js   # přímé ukládání na server (kpi, stroje)
 │  └─ logo.png
 ├─ api/                 # backend (Node.js)
 │  ├─ server.js  db.js  adduser.js  grant.js  config.example.env  package.json
@@ -43,7 +43,7 @@ Podrobně `docs/NASTAVENI.md`.
 
 ## Stav
 - **Hotové:** portál a všechny čtyři aplikace převedené na server, backend (přihlášení, práva view/edit/admin, ukládání), schéma DB, grafická správa uživatelů (dlaždice pro adminy) i CLI jako záloha.
-- **K otestování:** KPI a Tiskové stroje na ostrém serveru (zrcadlení localStorage). Přísnější „jen náhled" UI u těchto dvou lze doladit; data ale chrání backend (view neuloží nic) i tak.
+- KPI a Tiskové stroje ukládají přímo na server (server-store.js). Přísnější „jen náhled" UI u těchto dvou lze doladit; data chrání i backend (view neuloží nic).
 
 ## Bezpečnost
 - Do repozitáře nikdy nepatří hesla — jediné tajemství (`.env`: heslo k DB, `SESSION_SECRET`) `.gitignore` nechává mimo verzování; commituje se jen `config.example.env`.
