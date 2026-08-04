@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Produktivita strojů — Integraf</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f7f6f3; --surface: #ffffff; --surface2: #f1efea;
+    --border: rgba(0,0,0,0.1); --border-strong: rgba(0,0,0,0.18);
+    --text: #1a1a18; --text-muted: #6b6a65; --text-hint: #9e9d98;
+    --accent: #185fa5; --accent-light: #e6f1fb; --accent-mid: #378add;
+    --success: #2d6a0a; --success-bg: #eaf3de; --success-text: #3b6d11;
+    --danger: #a32d2d; --danger-bg: #fcebeb;
+    --warn: #92400e; --warn-bg: #fef3c7;
+    --above-bg: #e8f5e9; --above-text: #2e7d32;
+    --below-bg: #fdecea; --below-text: #c62828;
+    --radius: 10px; --radius-sm: 6px;
+    --shadow: 0 1px 4px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a; --surface: #242422; --surface2: #2e2e2b;
+      --border: rgba(255,255,255,0.08); --border-strong: rgba(255,255,255,0.15);
+      --text: #e8e6df; --text-muted: #9e9c96; --text-hint: #6a6965;
+      --accent: #85b7eb; --accent-light: #042c53; --accent-mid: #85b7eb;
+      --success-bg: #173404; --success-text: #c0dd97;
+      --danger: #f09595; --danger-bg: #501313;
+      --warn: #fbbf24; --warn-bg: #422006;
+      --above-bg: #1b3a1f; --above-text: #81c784;
+      --below-bg: #3b1212; --below-text: #ef9a9a;
+      --shadow: 0 1px 4px rgba(0,0,0,0.3), 0 0 0 0.5px rgba(255,255,255,0.05);
+    }
+  }
+
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.6; min-height: 100vh; }
+  header { background: var(--surface); border-bottom: 0.5px solid var(--border); padding: 0 2rem; display: flex; align-items: center; gap: 12px; height: 56px; }
+  header .logo { font-size: 16px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); }
+  header .logo span { color: var(--text-muted); font-weight: 400; }
+  .container { max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+  .card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.5rem; margin-bottom: 1.25rem; }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 1rem; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } header { padding: 0 1rem; } .container { padding: 1.25rem 1rem 3rem; } }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+  input[type="text"] { background: var(--surface2); border: 0.5px solid var(--border-strong); border-radius: var(--radius-sm); padding: 9px 12px; font-size: 14px; color: var(--text); width: 100%; transition: border-color 0.15s, box-shadow 0.15s; outline: none; font-family: inherit; }
+  input[type="text"]:focus { border-color: var(--accent-mid); box-shadow: 0 0 0 3px rgba(55,138,221,0.15); }
+  input[type="range"] { width: 100%; accent-color: var(--accent-mid); cursor: pointer; }
+  .hint { font-size: 12px; color: var(--text-hint); margin-top: 2px; min-height: 1.4em; }
+  .drop-zone { border: 1.5px dashed var(--border-strong); border-radius: var(--radius); padding: 2rem 1.5rem; text-align: center; cursor: pointer; transition: background 0.15s, border-color 0.15s; background: var(--surface2); margin-top: 1rem; }
+  .drop-zone:hover, .drop-zone.over { background: var(--accent-light); border-color: var(--accent-mid); }
+  .drop-zone.loaded { border-style: solid; border-color: #3b6d11; background: var(--success-bg); }
+  .drop-icon { font-size: 28px; margin-bottom: 8px; opacity: 0.5; }
+  .drop-title { font-size: 14px; font-weight: 500; color: var(--text); }
+  .drop-sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+  .drop-zone.loaded .drop-title { color: var(--success-text); }
+  .drop-zone.loaded .drop-sub { color: var(--success-text); opacity: 0.8; }
+  .btn-bar { display: flex; align-items: center; gap: 12px; margin-top: 1.25rem; flex-wrap: wrap; }
+  button.primary { background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); padding: 10px 22px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; transition: opacity 0.15s, transform 0.1s; }
+  button.primary:hover { opacity: 0.88; } button.primary:active { transform: scale(0.98); }
+  button.secondary { background: var(--surface2); color: var(--text); border: 0.5px solid var(--border-strong); border-radius: var(--radius-sm); padding: 10px 18px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+  button.secondary:hover { background: var(--accent-light); border-color: var(--accent-mid); color: var(--accent); }
+  .err-msg { font-size: 13px; color: var(--danger); background: var(--danger-bg); border-radius: var(--radius-sm); padding: 8px 12px; display: none; margin-top: 0.75rem; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 1.25rem; }
+  .metric { background: var(--surface2); border-radius: var(--radius-sm); padding: 14px 16px; }
+  .metric-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+  .metric-value { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); line-height: 1.2; }
+  .metric-unit { font-size: 13px; font-weight: 400; color: var(--text-muted); }
+  .tab-bar { display: flex; border-bottom: 0.5px solid var(--border); margin-bottom: 1.25rem; }
+  .tab { padding: 9px 18px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; background: none; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -0.5px; font-family: inherit; transition: color 0.15s; }
+  .tab:hover { color: var(--text); } .tab.active { color: var(--accent-mid); border-bottom-color: var(--accent-mid); }
+  .chart-title-wrap { text-align: center; margin-bottom: 0.75rem; }
+  .chart-title-machine { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .chart-title-type { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); line-height: 1.2; margin-top: 2px; }
+  .chart-wrap { position: relative; width: 100%; height: 260px; margin-bottom: 1.5rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { text-align: left; padding: 8px 10px; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 0.5px solid var(--border); }
+  thead th:not(:first-child) { text-align: right; }
+  tbody td { padding: 9px 10px; border-bottom: 0.5px solid var(--border); color: var(--text); }
+  tbody td:not(:first-child) { text-align: right; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--surface2); }
+  .month-section { margin-bottom: 2rem; }
+  .month-head { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; padding-bottom: 8px; border-bottom: 0.5px solid var(--border); margin-bottom: 10px; }
+  .worker-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 13px; }
+  .w-name { flex: 0 0 170px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
+  .w-bar-wrap { flex: 1; background: var(--surface2); border-radius: 4px; height: 10px; overflow: hidden; position: relative; }
+  .w-bar { height: 100%; border-radius: 4px; background: var(--accent-mid); transition: width 0.4s ease; }
+  .w-bar.total { background: var(--text-muted); }
+  .w-norm-line { position: absolute; top: 0; width: 2px; height: 100%; background: var(--text); opacity: 0.35; border-radius: 1px; }
+  .w-speed { flex: 0 0 110px; text-align: right; font-variant-numeric: tabular-nums; }
+  .w-speed.total { color: var(--text); font-weight: 600; }
+  .w-delta { flex: 0 0 80px; text-align: right; font-size: 12px; font-variant-numeric: tabular-nums; border-radius: 4px; padding: 2px 6px; font-weight: 600; }
+  .w-delta.above { background: var(--above-bg); color: var(--above-text); }
+  .w-delta.below { background: var(--below-bg); color: var(--below-text); }
+  .w-delta.none { color: var(--text-hint); font-weight: 400; }
+
+  /* Tooltip poznámky — fixní portal přes body */
+  .note-btn { background: none; border: none; cursor: help; font-size: 13px; padding: 0; line-height: 1; flex-shrink: 0; }
+  #note-tooltip {
+    position: fixed; z-index: 9999; display: none;
+    background: var(--surface); border: 0.5px solid var(--border-strong);
+    border-radius: var(--radius-sm); padding: 10px 14px;
+    font-size: 12px; color: var(--text); white-space: pre-wrap;
+    max-width: 340px; min-width: 200px; box-shadow: var(--shadow);
+    line-height: 1.55; pointer-events: none;
+  }
+
+  #results { display: none; }
+  .ops-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .ops-tag { font-size: 11px; background: var(--surface2); border: 0.5px solid var(--border-strong); border-radius: 4px; padding: 3px 8px; color: var(--text-muted); cursor: pointer; transition: background 0.12s; font-family: monospace; }
+  .ops-tag:hover { background: var(--accent-light); color: var(--accent); border-color: var(--accent-mid); }
+  footer { text-align: center; font-size: 12px; color: var(--text-hint); padding: 2rem 0 1rem; }
+
+  /* Filter blocks */
+  .filter-block { margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 0.5px solid var(--border); }
+  .filter-block:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .filter-label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .filter-label button { font-size: 11px; font-weight: 500; background: none; border: 0.5px solid var(--border-strong); border-radius: 4px; padding: 2px 8px; color: var(--text-muted); cursor: pointer; font-family: inherit; text-transform: none; letter-spacing: 0; }
+  .filter-label button:hover { background: var(--surface2); }
+  .chip-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { display: flex; align-items: center; gap: 6px; font-size: 13px; background: var(--surface2); border: 0.5px solid var(--border-strong); border-radius: 20px; padding: 4px 12px 4px 8px; cursor: pointer; user-select: none; transition: background 0.12s, border-color 0.12s; color: var(--text); }
+  .chip:hover { border-color: var(--accent-mid); }
+  .chip.excluded { background: var(--surface); border-color: var(--border); color: var(--text-hint); text-decoration: line-through; }
+  .chip input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--accent-mid); cursor: pointer; flex-shrink: 0; }
+
+  /* Slider */
+  .slider-row { display: flex; align-items: center; gap: 12px; }
+  .slider-row input[type=range] { flex: 1; }
+  .slider-val { font-size: 13px; font-weight: 600; color: var(--text); min-width: 70px; text-align: right; font-variant-numeric: tabular-nums; }
+  .slider-desc { font-size: 12px; color: var(--text-hint); margin-top: 4px; }
+
+  /* Collapsible zakázky */
+  .collapsible-head { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+  .collapsible-head .arrow { transition: transform 0.2s; }
+  .collapsible-head.open .arrow { transform: rotate(90deg); }
+  .collapsible-body { display: none; margin-top: 10px; }
+  .collapsible-body.open { display: block; }
+  .z-search { width: 100%; margin-bottom: 8px; }
+  .z-actions { display: flex; gap: 8px; margin-bottom: 8px; }
+  .z-actions button { font-size: 11px; background: none; border: 0.5px solid var(--border-strong); border-radius: 4px; padding: 2px 8px; color: var(--text-muted); cursor: pointer; font-family: inherit; }
+  .z-actions button:hover { background: var(--surface2); }
+
+  /* Skupinový filtr tlačítka */
+  .group-btn {
+    font-size: 12px; font-weight: 500; border-radius: 20px;
+    padding: 4px 14px; cursor: pointer; font-family: inherit;
+    transition: opacity 0.15s, box-shadow 0.15s, font-weight 0.1s;
+    white-space: nowrap;
+  }
+
+  /* Normy — legenda */
+  .norm-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1rem; }
+  .norm-badge { font-size: 11px; border-radius: 4px; padding: 3px 9px; font-weight: 600; }
+  .norm-badge.above { background: var(--above-bg); color: var(--above-text); }
+  .norm-badge.below { background: var(--below-bg); color: var(--below-text); }
+  .norm-badge.none { background: var(--surface2); color: var(--text-muted); }
+
+  /* Typ zakázky chipy */
+  .type-chip { font-size: 11px; border-radius: 4px; padding: 2px 7px; font-weight: 600; margin-left: 4px; }
+
+  /* ── Karta pracovníka ───────────────────────────────────────────────── */
+  .worker-picker-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1.25rem; }
+  .wpick-btn { font-size: 13px; font-weight: 500; background: var(--surface2); border: 0.5px solid var(--border-strong); border-radius: var(--radius-sm); padding: 7px 16px; cursor: pointer; font-family: inherit; color: var(--text); transition: background 0.12s, border-color 0.12s; }
+  .wpick-btn:hover { background: var(--accent-light); border-color: var(--accent-mid); color: var(--accent); }
+  .wpick-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .wcard-header { display: flex; align-items: baseline; gap: 16px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .wcard-name { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+  .wcard-sub { font-size: 13px; color: var(--text-muted); }
+
+  .wcard-kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+  .wcard-kpi-item { background: var(--surface2); border-radius: var(--radius-sm); padding: 14px 16px; }
+  .wcard-kpi-label { font-size: 12px; color: var(--text-muted); margin-bottom: 3px; }
+  .wcard-kpi-value { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
+  .wcard-kpi-unit { font-size: 12px; font-weight: 400; color: var(--text-muted); }
+  .wcard-kpi-delta { font-size: 12px; font-weight: 600; margin-top: 3px; }
+  .wcard-kpi-delta.above { color: var(--above-text); }
+  .wcard-kpi-delta.below { color: var(--below-text); }
+
+  .wcard-section { margin-bottom: 2rem; }
+  .wcard-section-title { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 0.5px solid var(--border); }
+  .wcard-chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.5rem; }
+  @media (max-width: 700px) { .wcard-chart-row { grid-template-columns: 1fr; } }
+  .wcard-chart-wrap { position: relative; height: 200px; }
+
+  /* Typ srovnávací tabulka */
+  .type-compare-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .type-compare-table th { text-align: left; padding: 7px 10px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 0.5px solid var(--border); }
+  .type-compare-table th:not(:first-child) { text-align: right; }
+  .type-compare-table td { padding: 8px 10px; border-bottom: 0.5px solid var(--border); }
+  .type-compare-table td:not(:first-child) { text-align: right; }
+  .type-compare-table tr:last-child td { border-bottom: none; }
+  .type-compare-table tr:hover td { background: var(--surface2); }
+  .delta-cell { font-weight: 600; border-radius: 4px; padding: 2px 7px; display: inline-block; }
+  .delta-cell.above { background: var(--above-bg); color: var(--above-text); }
+  .delta-cell.below { background: var(--below-bg); color: var(--below-text); }
+
+  /* Anonymní srovnání — horizontální bary */
+  .anon-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 13px; }
+  .anon-label { flex: 0 0 120px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .anon-label.highlight { color: var(--accent-mid); font-weight: 700; }
+  .anon-bar-wrap { flex: 1; background: var(--surface2); border-radius: 4px; height: 10px; overflow: hidden; position: relative; }
+  .anon-bar { height: 100%; border-radius: 4px; transition: width 0.4s; }
+  .anon-bar.self { background: var(--accent-mid); }
+  .anon-bar.other { background: var(--border-strong); opacity: 0.6; }
+  .anon-speed { flex: 0 0 90px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-muted); font-size: 12px; }
+  .anon-speed.highlight { color: var(--text); font-weight: 600; }
+  .anon-norm-line { position: absolute; top: 0; width: 2px; height: 100%; background: var(--text); opacity: 0.3; }
+
+
+
+  /* ── Karta pracovníka ───────────────────────────────────────────────── */
+  .worker-picker-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1.25rem; }
+  .wpick-btn { font-size: 13px; font-weight: 500; background: var(--surface2); border: 0.5px solid var(--border-strong); border-radius: var(--radius-sm); padding: 7px 16px; cursor: pointer; font-family: inherit; color: var(--text); transition: background 0.12s, border-color 0.12s; }
+  .wpick-btn:hover { background: var(--accent-light); border-color: var(--accent-mid); color: var(--accent); }
+  .wpick-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .wcard-header { display: flex; align-items: baseline; gap: 16px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .wcard-name { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+  .wcard-sub { font-size: 13px; color: var(--text-muted); }
+
+  .wcard-kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+  .wcard-kpi-item { background: var(--surface2); border-radius: var(--radius-sm); padding: 14px 16px; }
+  .wcard-kpi-label { font-size: 12px; color: var(--text-muted); margin-bottom: 3px; }
+  .wcard-kpi-value { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
+  .wcard-kpi-unit { font-size: 12px; font-weight: 400; color: var(--text-muted); }
+  .wcard-kpi-delta { font-size: 12px; font-weight: 600; margin-top: 3px; }
+  .wcard-kpi-delta.above { color: var(--above-text); }
+  .wcard-kpi-delta.below { color: var(--below-text); }
+
+  .wcard-section { margin-bottom: 2rem; }
+  .wcard-section-title { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 0.5px solid var(--border); }
+  .wcard-chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.5rem; }
+  @media (max-width: 700px) { .wcard-chart-row { grid-template-columns: 1fr; } }
+  .wcard-chart-wrap { position: relative; height: 200px; }
+
+  /* Typ srovnávací tabulka */
+  .type-compare-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .type-compare-table th { text-align: left; padding: 7px 10px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 0.5px solid var(--border); }
+  .type-compare-table th:not(:first-child) { text-align: right; }
+  .type-compare-table td { padding: 8px 10px; border-bottom: 0.5px solid var(--border); }
+  .type-compare-table td:not(:first-child) { text-align: right; }
+  .type-compare-table tr:last-child td { border-bottom: none; }
+  .type-compare-table tr:hover td { background: var(--surface2); }
+  .delta-cell { font-weight: 600; border-radius: 4px; padding: 2px 7px; display: inline-block; }
+  .delta-cell.above { background: var(--above-bg); color: var(--above-text); }
+  .delta-cell.below { background: var(--below-bg); color: var(--below-text); }
+
+  /* Anonymní srovnání — horizontální bary */
+  .anon-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 13px; }
+  .anon-label { flex: 0 0 120px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .anon-label.highlight { color: var(--accent-mid); font-weight: 700; }
+  .anon-bar-wrap { flex: 1; background: var(--surface2); border-radius: 4px; height: 10px; overflow: hidden; position: relative; }
+  .anon-bar { height: 100%; border-radius: 4px; transition: width 0.4s; }
+  .anon-bar.self { background: var(--accent-mid); }
+  .anon-bar.other { background: var(--border-strong); opacity: 0.6; }
+  .anon-speed { flex: 0 0 90px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-muted); font-size: 12px; }
+  .anon-speed.highlight { color: var(--text); font-weight: 600; }
+  .anon-norm-line { position: absolute; top: 0; width: 2px; height: 100%; background: var(--text); opacity: 0.3; }
+
+
+</style>
+</head>
+<body>
+
+<!-- Tooltip portal -->
+<div id="note-tooltip"></div>
+
+<header>
+  <div class="logo">Integraf <span>/ Produktivita strojů</span></div>
+</header>
+
+<div class="container">
+
+  <!-- Nastavení -->
+  <div class="card">
+    <div class="card-title">Nastavení analýzy</div>
+    <div class="form-grid">
+      <div class="field">
+        <label for="machine-name">Název stroje</label>
+        <input type="text" id="machine-name" placeholder="např. V1, XL106…" />
+        <div class="hint">Vyplní se automaticky po nahrání souboru</div>
+      </div>
+      <div class="field">
+        <label for="operation">Operace (ze sloupce D)</label>
+        <input type="text" id="operation" placeholder="např. 79/2,produkce V1" />
+        <div class="hint" id="op-hint">Vyplní se automaticky po nahrání souboru</div>
+      </div>
+    </div>
+    <div class="drop-zone" id="drop-zone" tabindex="0" role="button" aria-label="Nahrát soubor xlsx">
+      <div class="drop-icon">📂</div>
+      <div class="drop-title" id="drop-title">Klikněte nebo přetáhněte soubor xlsx</div>
+      <div class="drop-sub" id="drop-sub">Podporovány formáty .xlsx a .xlsm</div>
+    </div>
+    <div id="ops-wrap" style="display:none; margin-top:10px;">
+      <div class="hint" style="margin-bottom:4px;">Operace nalezené v souboru — klikněte pro vyplnění:</div>
+      <div class="ops-tags" id="ops-tags"></div>
+    </div>
+    <div class="err-msg" id="load-error"></div>
+    <div class="btn-bar">
+      <button class="primary" onclick="runAnalysis()">▶ Vypočítat produktivitu</button>
+      <span style="font-size:13px; color:var(--text-muted);" id="run-msg"></span>
+    </div>
+  </div>
+
+  <!-- Výsledky -->
+  <div id="results">
+
+    <div class="card">
+      <div class="card-title" id="results-title">Výsledky</div>
+      <div class="metrics" id="metrics-bar"></div>
+    </div>
+
+    <div class="card">
+
+      <!-- Slider min. hodin -->
+      <div class="filter-block">
+        <div class="filter-label">Min. odpracované hodiny</div>
+        <div class="slider-row">
+          <input type="range" id="min-hours-slider" min="0" max="100" step="1" value="2" oninput="onSliderChange()">
+          <span class="slider-val" id="slider-val-display">— h</span>
+        </div>
+        <div class="slider-desc" id="slider-desc">Pracovníci pod prahem budou odškrtnuti</div>
+      </div>
+
+      <!-- Filtr pracovníků -->
+      <div class="filter-block">
+        <div class="filter-label">
+          Pracovníci
+          <button onclick="setAllWorkers(true)">Vybrat vše</button>
+          <button onclick="setAllWorkers(false)">Odebrat vše</button>
+        </div>
+        <div class="chip-wrap" id="worker-checkboxes"></div>
+      </div>
+
+      <!-- Filtr zakázek -->
+      <div class="filter-block" id="zakázky-filter-block" style="display:none;">
+        <!-- Skupinový filtr typů -->
+        <div class="filter-label" style="margin-bottom:6px;">
+          Rychlý filtr skupin zakázek
+          <button onclick="setGroupFilter(null)">Vše</button>
+        </div>
+        <div class="chip-wrap" id="group-filter-chips" style="margin-bottom:0;"></div>
+
+        <div class="collapsible-head" id="zakázky-toggle" onclick="toggleCollapsible('zakázky')">
+          <span class="arrow">▶</span>
+          Filtr zakázek
+          <span id="zakázky-count" style="font-weight:400; text-transform:none; letter-spacing:0; color:var(--text-hint); font-size:11px;"></span>
+        </div>
+        <div class="collapsible-body" id="zakázky-body">
+          <input type="text" class="z-search" id="zakázky-search" placeholder="Hledat zakázku…" oninput="filterZakázkySearch()">
+          <div class="z-actions">
+            <button onclick="setAllZakázky(true)">Vybrat vše</button>
+            <button onclick="setAllZakázky(false)">Odebrat vše</button>
+          </div>
+          <div class="chip-wrap" id="zakázky-checkboxes"></div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tab-bar">
+        <button class="tab active" onclick="switchTab('celkem', this)">Celkem za stroj</button>
+        <button class="tab" onclick="switchTab('pracovnici', this)">Podle pracovníků</button>
+        <button class="tab" onclick="switchTab('hodnoceni', this)">Hodnocení pracovníka</button>
+      </div>
+
+      <div id="tab-celkem">
+        <div class="chart-title-wrap" id="chart-title-wrap">
+          <div class="chart-title-machine" id="chart-title-machine"></div>
+          <div class="chart-title-type" id="chart-title-type"></div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="monthly-chart" role="img" aria-label="Průměrná rychlost v ks/h po měsících"></canvas>
+        </div>
+        <div id="monthly-table"></div>
+      </div>
+
+      <div id="tab-pracovnici" style="display:none;">
+        <div id="norm-legend-wrap"></div>
+        <div id="worker-months"></div>
+      </div>
+
+      <div id="tab-hodnoceni" style="display:none;">
+        <div class="worker-picker-grid" id="worker-picker-grid"></div>
+        <div id="worker-card-content">
+          <p style="color:var(--text-hint); font-size:13px;">Vyberte pracovníka výše.</p>
+        </div>
+      </div>
+
+      <div class="btn-bar" style="margin-top:1.5rem; padding-top:1.25rem; border-top:0.5px solid var(--border);">
+        <button class="secondary" onclick="exportToXlsx()">⬇ Exportovat do Excelu</button>
+        <button class="secondary" id="pdf-btn" onclick="exportWorkerPdf()" style="display:none;">🖨 PDF — karta pracovníka</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>Integraf, s.&nbsp;r.&nbsp;o. &nbsp;·&nbsp; Analýza produktivity strojů &nbsp;·&nbsp; běží lokálně v prohlížeči</footer>
+
+<script src="api.js"></script>
+<script>
+(async function(){
+  const me = await requireAuth("index.html");
+  if(!me) return;
+  const perm = (me.permissions||[]).find(p=>p.app_key==="produktivita");
+  if(!me.is_admin && !perm){
+    document.body.innerHTML='<p style="padding:26px;font:16px system-ui">Nem\u00e1\u0161 p\u0159\u00edstup k t\u00e9to aplikaci. <a href="index.html">Zp\u011bt na panel</a></p>';
+    return;
+  }
+  const rl = me.is_admin ? "admin" : (perm && perm.role==="edit" ? "editace" : "n\u00e1hled");
+  const ready = fn => (document.readyState==="loading") ? document.addEventListener("DOMContentLoaded",fn) : fn();
+  ready(()=>{
+    const bar=document.createElement("div");
+    bar.style.cssText="position:fixed;top:8px;right:10px;z-index:99999;display:flex;gap:6px;align-items:center;font:12px system-ui";
+    bar.innerHTML='<a href="index.html" style="color:#333;text-decoration:none;background:#fff;border:1px solid #ccc;border-radius:6px;padding:4px 8px">\u2190 BOBR</a>'
+      +'<span style="background:#fff;border:1px solid #ccc;border-radius:6px;padding:4px 8px;color:#777">'+rl+'</span>'
+      +'<button id="bobrLogout" style="background:#fff;border:1px solid #ccc;border-radius:6px;padding:4px 8px;cursor:pointer;color:#333">Odhl\u00e1sit</button>';
+    document.body.appendChild(bar);
+    document.getElementById("bobrLogout").onclick=()=>signOut("index.html");
+  });
+})();
+</script>
+
+<script>
+// ── Definice strojů ────────────────────────────────────────────────────────
+const MACHINES = [
+  { name: 'V1',            op: '79/2,produkce V1' },
+  { name: 'V2 — PUR',      op: '73/2,lepení PUR' },
+  { name: 'V2 — BLOKY',    op: '73/11,lepení BLOKY' },
+  { name: 'STAHL 82',      op: '62/1,falcování' },
+  { name: 'STAHL KH 78',   op: '61/1,falcování' },
+  { name: 'MBO',           op: '60/1,falcování' },
+  { name: 'BRAUSSE BORA',  op: '64/2,výsek, bigování' },
+  { name: 'OKÉNKOVAČKA',   op: '74/2,okénkování' },
+  { name: 'LEPIČKA OMEGA', op: '72/2,lepení na stroji' },
+];
+
+// ── Normy: stroj → typ zakázky → ks/h ────────────────────────────────────
+// Typ se detekuje podle klíčových slov v názvu zakázky (case-insensitive)
+const ORDER_TYPES = [
+  { key: 'pizza',    label: 'Pizza',    keywords: ['pizza'] },
+  { key: 'linteo',   label: 'Linteo',   keywords: ['linteo', 'oncle', 'onclé', ' aro ', '-aro ', ' aro-', 'barvy a laky', 'váš výběr', 'vas vyber'] },
+  { key: 'pm',       label: 'FJORD (PM)', keywords: ['pm'] },
+  { key: 'magnet',   label: 'MAGNET PRESS', keywords: ['atm', ' lk ', ',lk,', '/lk/', '-lk-', 'lk '] },
+  { key: 'notepads', label: 'Notepads', keywords: ['notepad'] },
+];
+
+const NORMS = {
+  'LEPIČKA OMEGA': { pizza: 11333, linteo: 13333, pm: 10667 },
+  'BRAUSSE BORA':  { pizza: 3333,  linteo: 3333,  pm: 2530  },
+  'OKÉNKOVAČKA':   { linteo: 13333 },
+  'MBO':           { magnet: 5333 },
+};
+
+// Barvy pro typy zakázek (chip tag)
+const TYPE_COLORS = {
+  pizza:    { bg: '#fff3e0', text: '#e65100' },
+  linteo:   { bg: '#e8f5e9', text: '#2e7d32' },
+  pm:       { bg: '#e3f2fd', text: '#1565c0' },
+  magnet:   { bg: '#ede7f6', text: '#5e35b1' },
+  notepads: { bg: '#e0f7fa', text: '#006064' },
+};
+const TYPE_COLORS_DARK = {
+  pizza:    { bg: '#3e2000', text: '#ffb74d' },
+  linteo:   { bg: '#1b3a1f', text: '#81c784' },
+  pm:       { bg: '#0d2a47', text: '#64b5f6' },
+  magnet:   { bg: '#2a1a4a', text: '#b39ddb' },
+  notepads: { bg: '#003a40', text: '#4dd0e1' },
+};
+
+function getTypeColors() {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? TYPE_COLORS_DARK : TYPE_COLORS;
+}
+
+function detectOrderType(zakázkaName) {
+  const n = ' ' + zakázkaName.toLowerCase() + ' ';
+  for (const t of ORDER_TYPES) {
+    for (const kw of t.keywords) {
+      if (n.includes(kw)) return t.key;
+    }
+  }
+  return null;
+}
+
+function getNorm(machineName, orderType) {
+  if (!orderType) return null;
+  const mNorms = NORMS[machineName];
+  if (!mNorms) return null;
+  return mNorms[orderType] || null;
+}
+
+let workbookData = null;
+let chartInstance = null;
+let analysisData = null;
+let sliderMax = 100;
+
+// ── Drop zone ──────────────────────────────────────────────────────────────
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('click', () => {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.xlsx,.xlsm';
+  inp.onchange = e => loadFile(e.target.files[0]);
+  inp.click();
+});
+dz.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') dz.click(); });
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('over');
+  const f = e.dataTransfer.files[0]; if (f) loadFile(f);
+});
+
+function loadFile(file) {
+  if (!file) return;
+  document.getElementById('drop-sub').textContent = 'Načítám…';
+  document.getElementById('load-error').style.display = 'none';
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      workbookData = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      document.getElementById('drop-title').textContent = '✓ ' + file.name;
+      document.getElementById('drop-sub').textContent = (workbookData.length - 1) + ' řádků dat načteno';
+      dz.classList.add('loaded');
+      showOpsHint(workbookData);
+    } catch (err) {
+      showError('load-error', 'Chyba při čtení souboru: ' + err.message);
+      document.getElementById('drop-sub').textContent = 'Chyba načítání';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function showOpsHint(rows) {
+  const ops = new Set();
+  for (let i = 1; i < rows.length; i++) {
+    const op = String(rows[i][3] || '').trim();
+    if (op) ops.add(op);
+  }
+  const matched = MACHINES.find(m =>
+    [...ops].some(op => {
+      const a = op.toLowerCase(), b = m.op.toLowerCase();
+      return a === b || a.startsWith(b) || b.startsWith(a);
+    })
+  );
+  if (matched) {
+    document.getElementById('machine-name').value = matched.name;
+    document.getElementById('operation').value = matched.op;
+    document.getElementById('ops-wrap').style.display = 'none';
+    return;
+  }
+  document.getElementById('machine-name').value = '';
+  document.getElementById('operation').value = '';
+  const wrap = document.getElementById('ops-wrap');
+  const tags = document.getElementById('ops-tags');
+  tags.innerHTML = '';
+  [...ops].slice(0, 20).forEach(op => {
+    const btn = document.createElement('span');
+    btn.className = 'ops-tag'; btn.textContent = op;
+    btn.onclick = () => { document.getElementById('operation').value = op; };
+    tags.appendChild(btn);
+  });
+  wrap.style.display = 'block';
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function parseTimeMinutes(v) {
+  const s = String(v || '');
+  const m = [...s.matchAll(/\(\s*(\d+):(\d+)\)/g)];
+  return m.length ? m.reduce((s, x) => s + parseInt(x[1]) * 60 + parseInt(x[2]), 0) : null;
+}
+function excelDateToYYYYMM(val) {
+  if (!val) return null;
+  if (typeof val === 'string' && val.match(/^\d{4}-\d{2}/)) return val.slice(0, 7);
+  const n = Number(val); if (isNaN(n) || n < 1) return null;
+  const d = new Date(Math.round((n - 25569) * 86400 * 1000));
+  return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0');
+}
+function excelDateToStr(val) {
+  if (!val) return '';
+  if (typeof val === 'string') return val.slice(0, 10);
+  const n = Number(val); if (isNaN(n) || n < 1) return '';
+  const d = new Date(Math.round((n - 25569) * 86400 * 1000));
+  return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
+}
+function parseQty(val) {
+  if (val === null || val === undefined || val === '') return null;
+  if (typeof val === 'number') return val;
+  const c = String(val).replace(/\xa0/g,'').replace(/\s/g,'').replace(/\./g,'').replace(',','.');
+  const n = parseFloat(c); return isNaN(n) ? null : n;
+}
+function monthLabel(ym) {
+  const [y, mo] = ym.split('-');
+  return ['','Led','Úno','Bře','Dub','Kvě','Čvn','Čvc','Srp','Zář','Říj','Lis','Pro'][parseInt(mo)] + ' ' + y;
+}
+function fmt(n) { return Math.round(n).toLocaleString('cs-CZ'); }
+function fmtH(mins) { return (Math.round(mins / 60 * 10) / 10).toLocaleString('cs-CZ'); }
+function showError(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.style.display = 'block'; }
+
+// ── Tooltip poznámek ───────────────────────────────────────────────────────
+const tooltip = document.getElementById('note-tooltip');
+function showNoteTooltip(el, text) {
+  tooltip.textContent = text;
+  tooltip.style.display = 'block';
+  positionTooltip(el);
+}
+function positionTooltip(el) {
+  const r = el.getBoundingClientRect();
+  const tw = 340, th = tooltip.offsetHeight;
+  let left = r.right + 8;
+  let top = r.top;
+  if (left + tw > window.innerWidth - 8) left = r.left - tw - 8;
+  if (top + th > window.innerHeight - 8) top = window.innerHeight - th - 8;
+  tooltip.style.left = Math.max(8, left) + 'px';
+  tooltip.style.top = Math.max(8, top) + 'px';
+}
+function hideNoteTooltip() { tooltip.style.display = 'none'; }
+
+// ── Main analysis ──────────────────────────────────────────────────────────
+function runAnalysis() {
+  document.getElementById('load-error').style.display = 'none';
+  if (!workbookData) { showError('load-error', 'Nejprve nahrajte soubor xlsx.'); return; }
+  const opFilter = document.getElementById('operation').value.trim().toLowerCase();
+  if (!opFilter) { showError('load-error', 'Zadejte název operace (sloupec D).'); return; }
+  document.getElementById('run-msg').textContent = 'Počítám…';
+
+  const byWorkerMonth = {};
+  const allZakázky = new Set();
+  let matchCount = 0, totalMinsAll = 0;
+
+  for (let i = 1; i < workbookData.length; i++) {
+    const row = workbookData[i];
+    const operace = String(row[3] || '').trim().toLowerCase();
+    if (!operace.includes(opFilter)) continue;
+    const mins = parseTimeMinutes(row[5]);
+    const qty = parseQty(row[6]);
+    const ym = excelDateToYYYYMM(row[4]);
+    const worker = String(row[2] || '').trim() || '(neznámý)';
+    const zakázka = String(row[1] || '').replace(/\xa0/g,'').trim() || '(bez zakázky)';
+    const note = String(row[12] || '').replace(/\xa0/g,'').trim();
+    const dateStr = excelDateToStr(row[4]);
+    if (mins === null || qty === null || !ym || mins === 0) continue;
+
+    matchCount++;
+    totalMinsAll += mins;
+    allZakázky.add(zakázka);
+    if (!byWorkerMonth[worker]) byWorkerMonth[worker] = {};
+    if (!byWorkerMonth[worker][ym]) byWorkerMonth[worker][ym] = { qty: 0, mins: 0, notes: [], byZakázka: {} };
+    const cell = byWorkerMonth[worker][ym];
+    cell.qty += qty; cell.mins += mins;
+    if (note) cell.notes.push({ date: dateStr, note, zakázka });
+    if (!cell.byZakázka[zakázka]) cell.byZakázka[zakázka] = { qty: 0, mins: 0 };
+    cell.byZakázka[zakázka].qty += qty;
+    cell.byZakázka[zakázka].mins += mins;
+  }
+
+  if (matchCount === 0) {
+    document.getElementById('run-msg').textContent = '';
+    showError('load-error', 'Žádné řádky neodpovídají zadané operaci.');
+    return;
+  }
+  document.getElementById('run-msg').textContent = '';
+
+  const workers = Object.keys(byWorkerMonth).sort();
+  const machineName = document.getElementById('machine-name').value.trim() || 'Stroj';
+  const workerTotalMins = {};
+  workers.forEach(w => { workerTotalMins[w] = Object.values(byWorkerMonth[w]).reduce((s, d) => s + d.mins, 0); });
+
+  sliderMax = Math.ceil(totalMinsAll / 60);
+  const defaultH = Math.max(1, Math.round(sliderMax * 2 / 100));
+  const slider = document.getElementById('min-hours-slider');
+  slider.max = sliderMax; slider.value = defaultH;
+
+  analysisData = { byWorkerMonth, workers, machineName, opFilter, workerTotalMins, totalMinsAll, allZakázky: [...allZakázky].sort() };
+
+  document.getElementById('results-title').textContent = machineName + ' · ' + document.getElementById('operation').value.trim();
+  buildWorkerFilter(workers, workerTotalMins, defaultH);
+  buildZakázkyFilter([...allZakázky].sort());
+  buildGroupFilter();
+  updateSliderDisplay(defaultH, sliderMax);
+  document.getElementById('results').style.display = 'block';
+  renderResults();
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Slider ─────────────────────────────────────────────────────────────────
+function updateSliderDisplay(h, total) {
+  const pct = total > 0 ? Math.round(h / total * 100) : 0;
+  document.getElementById('slider-val-display').textContent = h.toLocaleString('cs-CZ') + ' h';
+  document.getElementById('slider-desc').textContent =
+    pct + ' % z celkového času (' + total.toLocaleString('cs-CZ') + ' h) — pracovníci pod prahem budou odškrtnuti';
+}
+function onSliderChange() {
+  if (!analysisData) return;
+  const h = parseInt(document.getElementById('min-hours-slider').value);
+  updateSliderDisplay(h, Math.round(analysisData.totalMinsAll / 60));
+  applySliderToWorkers(h);
+  renderResults();
+}
+function applySliderToWorkers(minH) {
+  const minMins = minH * 60;
+  document.querySelectorAll('#worker-checkboxes input[type=checkbox]').forEach(cb => {
+    const ok = (analysisData.workerTotalMins[cb.value] || 0) >= minMins;
+    cb.checked = ok;
+    cb.closest('.chip').classList.toggle('excluded', !ok);
+  });
+}
+
+// ── Filtr pracovníků ───────────────────────────────────────────────────────
+function getActiveWorkers() {
+  const s = new Set();
+  document.querySelectorAll('#worker-checkboxes input:checked').forEach(cb => s.add(cb.value));
+  return s;
+}
+function buildWorkerFilter(workers, workerTotalMins, minH) {
+  const container = document.getElementById('worker-checkboxes');
+  container.innerHTML = '';
+  const minMins = minH * 60;
+  workers.forEach(w => {
+    const chip = document.createElement('label'); chip.className = 'chip';
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = w;
+    const ok = (workerTotalMins[w] || 0) >= minMins;
+    cb.checked = ok; chip.classList.toggle('excluded', !ok);
+    cb.addEventListener('change', () => { chip.classList.toggle('excluded', !cb.checked); renderResults(); });
+    chip.appendChild(cb);
+    const span = document.createElement('span');
+    span.textContent = w; span.title = fmtH(workerTotalMins[w] || 0) + ' h celkem';
+    chip.appendChild(span);
+    container.appendChild(chip);
+  });
+}
+function setAllWorkers(checked) {
+  document.querySelectorAll('#worker-checkboxes input').forEach(cb => {
+    cb.checked = checked; cb.closest('.chip').classList.toggle('excluded', !checked);
+  });
+  renderResults();
+}
+
+// ── Filtr zakázek ──────────────────────────────────────────────────────────
+function getActiveZakázky() {
+  const s = new Set();
+  document.querySelectorAll('#zakázky-checkboxes input:checked').forEach(cb => s.add(cb.value));
+  return s;
+}
+function buildZakázkyFilter(zakázky) {
+  const container = document.getElementById('zakázky-checkboxes');
+  container.innerHTML = '';
+  const colors = getTypeColors();
+  zakázky.forEach(z => {
+    const chip = document.createElement('label'); chip.className = 'chip'; chip.dataset.name = z.toLowerCase();
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = z; cb.checked = true;
+    cb.addEventListener('change', () => { chip.classList.toggle('excluded', !cb.checked); renderResults(); updateZakázkyCount(); });
+    chip.appendChild(cb);
+    chip.appendChild(document.createTextNode(z));
+    // typ badge
+    const typ = detectOrderType(z);
+    if (typ) {
+      const badge = document.createElement('span');
+      badge.className = 'type-chip';
+      const c = colors[typ] || {};
+      badge.style.background = c.bg || ''; badge.style.color = c.text || '';
+      badge.textContent = ORDER_TYPES.find(t => t.key === typ)?.label || typ;
+      chip.appendChild(badge);
+    }
+    container.appendChild(chip);
+  });
+  document.getElementById('zakázky-filter-block').style.display = 'block';
+  updateZakázkyCount();
+}
+function updateZakázkyCount() {
+  const total = document.querySelectorAll('#zakázky-checkboxes input').length;
+  const active = document.querySelectorAll('#zakázky-checkboxes input:checked').length;
+  document.getElementById('zakázky-count').textContent = active === total ? '(' + total + ')' : '(' + active + ' / ' + total + ')';
+}
+function filterZakázkySearch() {
+  const q = document.getElementById('zakázky-search').value.toLowerCase();
+  document.querySelectorAll('#zakázky-checkboxes .chip').forEach(chip => {
+    chip.style.display = chip.dataset.name.includes(q) ? '' : 'none';
+  });
+}
+function setAllZakázky(checked) {
+  document.querySelectorAll('#zakázky-checkboxes .chip').forEach(chip => {
+    if (chip.style.display !== 'none') {
+      const cb = chip.querySelector('input');
+      cb.checked = checked; chip.classList.toggle('excluded', !checked);
+    }
+  });
+  renderResults(); updateZakázkyCount();
+}
+function toggleCollapsible(id) {
+  document.getElementById(id + '-toggle').classList.toggle('open');
+  document.getElementById(id + '-body').classList.toggle('open');
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function renderResults() {
+  if (!analysisData) return;
+  const { byWorkerMonth, workers, machineName } = analysisData;
+  const activeWorkers = getActiveWorkers();
+  const activeZakázky = getActiveZakázky();
+
+  // Agregace + výpočet norem per worker per month
+  const byMonth = {};
+  const byWorkerMonthFiltered = {};
+
+  workers.forEach(w => {
+    if (!activeWorkers.has(w)) return;
+    Object.entries(byWorkerMonth[w]).forEach(([ym, d]) => {
+      let filtQty = 0, filtMins = 0;
+      // Per zakázka — pro normy potřebujeme typ-vážený průměr
+      const activeByType = {}; // type → {qty, mins}
+
+      Object.entries(d.byZakázka).forEach(([z, zd]) => {
+        if (!activeZakázky.has(z)) return;
+        filtQty += zd.qty; filtMins += zd.mins;
+        const typ = detectOrderType(z);
+        if (typ) {
+          if (!activeByType[typ]) activeByType[typ] = { qty: 0, mins: 0 };
+          activeByType[typ].qty += zd.qty; activeByType[typ].mins += zd.mins;
+        }
+      });
+      if (filtMins === 0) return;
+
+      if (!byMonth[ym]) byMonth[ym] = { qty: 0, mins: 0 };
+      byMonth[ym].qty += filtQty; byMonth[ym].mins += filtMins;
+
+      if (!byWorkerMonthFiltered[w]) byWorkerMonthFiltered[w] = {};
+      byWorkerMonthFiltered[w][ym] = {
+        qty: filtQty, mins: filtMins,
+        notes: d.notes.filter(n => activeZakázky.has(n.zakázka)),
+        byZakázka: d.byZakázka,
+        activeByType,
+      };
+    });
+  });
+
+  const months = Object.keys(byMonth).sort();
+  const monthLabels = months.map(monthLabel);
+  const activeWorkerList = workers.filter(w => activeWorkers.has(w));
+
+  // Metriky
+  let totalQty = 0, totalMin = 0;
+  months.forEach(m => { totalQty += byMonth[m].qty; totalMin += byMonth[m].mins; });
+  const avgSpeed = totalMin > 0 ? Math.round(totalQty / totalMin * 60) : 0;
+
+  document.getElementById('metrics-bar').innerHTML = `
+    <div class="metric"><div class="metric-label">Průměrná rychlost celkem</div><div class="metric-value">${fmt(avgSpeed)} <span class="metric-unit">ks/h</span></div></div>
+    <div class="metric"><div class="metric-label">Celkové množství</div><div class="metric-value">${fmt(totalQty)} <span class="metric-unit">ks</span></div></div>
+    <div class="metric"><div class="metric-label">Celkový čas</div><div class="metric-value">${fmtH(totalMin)} <span class="metric-unit">h</span></div></div>
+    <div class="metric"><div class="metric-label">Zobrazeno pracovníků</div><div class="metric-value">${activeWorkerList.length} <span class="metric-unit">/ ${workers.length}</span></div></div>
+    <div class="metric"><div class="metric-label">Měsíců dat</div><div class="metric-value">${months.length}</div></div>
+  `;
+
+  // Graf
+  const monthSpeeds = months.map(m => byMonth[m].mins > 0 ? Math.round(byMonth[m].qty / byMonth[m].mins * 60) : 0);
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const textColor = isDark ? '#9e9c96' : '#6b6a65';
+
+  // Norma pro zobrazená data — vážený průměr pevných norem (NORMS) podle
+  // skutečně odpracovaných minut na typ zakázky. Když je zobrazen jediný typ
+  // (typicky přes rychlý filtr skupin), linka sedne přesně na jeho normu.
+  const machineNormsChart = NORMS[machineName];
+  let normNumChart = 0, normDenomChart = 0;
+  if (machineNormsChart) {
+    activeWorkerList.forEach(w => {
+      const wm = byWorkerMonthFiltered[w];
+      if (!wm) return;
+      Object.values(wm).forEach(d => {
+        Object.entries(d.activeByType || {}).forEach(([typ, td]) => {
+          const n = machineNormsChart[typ];
+          if (n) { normNumChart += n * td.mins; normDenomChart += td.mins; }
+        });
+      });
+    });
+  }
+  const overallNorm = normDenomChart > 0 ? Math.round(normNumChart / normDenomChart) : null;
+
+  // Nadpis grafu — název stroje + aktivní druh zakázky (pro screenshot do prezentace)
+  const grpType = activeGroupFilter ? ORDER_TYPES.find(t => t.key === activeGroupFilter) : null;
+  document.getElementById('chart-title-machine').textContent = machineName;
+  document.getElementById('chart-title-type').textContent = grpType ? grpType.label : 'Všechny zakázky';
+
+  const chartDatasets = [{ label: 'Rychlost (ks/h)', data: monthSpeeds, backgroundColor: isDark ? '#85b7eb' : '#378add', borderRadius: 5, borderSkipped: false, order: 1 }];
+  if (overallNorm !== null) {
+    chartDatasets.push({
+      type: 'line',
+      label: 'Norma (' + fmt(overallNorm) + ' ks/h)',
+      data: months.map(() => overallNorm),
+      borderColor: isDark ? '#fbbf24' : '#d97706',
+      backgroundColor: 'transparent',
+      borderWidth: 2, borderDash: [6, 4],
+      pointRadius: 0, tension: 0, order: 0
+    });
+  }
+
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(document.getElementById('monthly-chart'), {
+    type: 'bar',
+    data: { labels: monthLabels, datasets: chartDatasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: overallNorm !== null, labels: { color: textColor, font: { size: 11 }, boxWidth: 18 } },
+        tooltip: { callbacks: { label: ctx => ' ' + (ctx.parsed.y || 0).toLocaleString('cs-CZ') + ' ks/h' } }
+      },
+      scales: {
+        y: { title: { display: true, text: 'ks/h', color: textColor, font: { size: 12 } }, ticks: { color: textColor, font: { size: 12 }, callback: v => v.toLocaleString('cs-CZ') }, grid: { color: gridColor } },
+        x: { ticks: { color: textColor, font: { size: 12 }, autoSkip: false, maxRotation: 45 }, grid: { display: false } }
+      }
+    }
+  });
+
+  // Tabulka měsíců
+  let tbl = '<table><thead><tr><th>Měsíc</th><th>Průměrná rychlost</th><th>Množství</th><th>Čas (h)</th></tr></thead><tbody>';
+  months.forEach((m, idx) => {
+    const d = byMonth[m];
+    const sp = d.mins > 0 ? Math.round(d.qty / d.mins * 60) : 0;
+    tbl += `<tr><td>${monthLabels[idx]}</td><td><strong>${fmt(sp)} ks/h</strong></td><td>${fmt(d.qty)}</td><td>${fmtH(d.mins)}</td></tr>`;
+  });
+  tbl += '</tbody></table>';
+  document.getElementById('monthly-table').innerHTML = tbl;
+
+  // Legenda norem
+  const machineNorms = NORMS[machineName];
+  let legendHtml = '';
+  if (machineNorms) {
+    legendHtml = '<div class="norm-legend">';
+    ORDER_TYPES.forEach(t => {
+      const norm = machineNorms[t.key];
+      if (!norm) return;
+      legendHtml += `<span class="norm-badge none">${t.label}: norma ${fmt(norm)} ks/h</span>`;
+    });
+    legendHtml += '<span class="norm-badge above">↑ nad normou</span>';
+    legendHtml += '<span class="norm-badge below">↓ pod normou</span>';
+    legendHtml += '</div>';
+  }
+  document.getElementById('norm-legend-wrap').innerHTML = legendHtml;
+
+  // Pracovníci — bary + normy + poznámky
+  const allSpeeds = months.flatMap(m =>
+    activeWorkerList.map(w => { const wd = byWorkerMonthFiltered[w]?.[m]; return wd && wd.mins > 0 ? wd.qty / wd.mins * 60 : 0; })
+  );
+  const maxSpd = Math.max(...allSpeeds, 1);
+
+  let workerHtml = '';
+  months.forEach((m, idx) => {
+    workerHtml += `<div class="month-section"><div class="month-head">${monthLabels[idx]}</div>`;
+    const md = byMonth[m];
+    const totSpd = md.mins > 0 ? Math.round(md.qty / md.mins * 60) : 0;
+    const totPct = Math.round(totSpd / maxSpd * 100);
+    workerHtml += `<div class="worker-row">
+      <span class="w-name total" style="font-style:italic;color:var(--text-muted);">Stroj celkem</span>
+      <div class="w-bar-wrap"><div class="w-bar total" style="width:${totPct}%"></div></div>
+      <span class="w-speed total">${fmt(totSpd)} ks/h</span>
+      <span class="w-delta none"></span>
+    </div>`;
+
+    activeWorkerList.forEach(w => {
+      const wd = byWorkerMonthFiltered[w]?.[m];
+      if (!wd) return;
+      const sp = wd.mins > 0 ? Math.round(wd.qty / wd.mins * 60) : 0;
+      const pct = Math.round(sp / maxSpd * 100);
+
+      // Vypočítat vážená norma: průměr norem pro každý typ, vážený minutami
+      let normNum = null, normDenom = 0;
+      if (machineNorms) {
+        Object.entries(wd.activeByType).forEach(([typ, td]) => {
+          const n = machineNorms[typ];
+          if (n) { normNum = (normNum || 0) + n * td.mins; normDenom += td.mins; }
+        });
+      }
+      const norm = normNum !== null && normDenom > 0 ? Math.round(normNum / normDenom) : null;
+
+      // Čára normy v baru
+      let normLine = '';
+      if (norm) {
+        const normPct = Math.min(100, Math.round(norm / maxSpd * 100));
+        normLine = `<div class="w-norm-line" style="left:${normPct}%" title="Norma: ${fmt(norm)} ks/h"></div>`;
+      }
+
+      // Delta badge
+      let deltaHtml = '<span class="w-delta none">—</span>';
+      if (norm) {
+        const diff = sp - norm;
+        const diffPct = Math.round(diff / norm * 100);
+        const sign = diff >= 0 ? '+' : '';
+        const cls = diff >= 0 ? 'above' : 'below';
+        const arrow = diff >= 0 ? '↑' : '↓';
+        deltaHtml = `<span class="w-delta ${cls}" title="Norma: ${fmt(norm)} ks/h">${arrow} ${sign}${diffPct} %</span>`;
+      }
+
+      // Poznámky — button s tooltip
+      let noteBtn = '';
+      if (wd.notes && wd.notes.length > 0) {
+        const tipText = wd.notes.map(n => n.date + '  ' + n.note).join('\n');
+        const escaped = tipText.replace(/'/g, "\\'").replace(/\n/g, '\\n');
+        noteBtn = `<button class="note-btn" onmouseenter="showNoteTooltip(this,'${escaped}')" onmouseleave="hideNoteTooltip()" aria-label="Poznámky">⚠️</button>`;
+      }
+
+      workerHtml += `<div class="worker-row">
+        <span class="w-name">${w}${noteBtn}</span>
+        <div class="w-bar-wrap"><div class="w-bar" style="width:${pct}%"></div>${normLine}</div>
+        <span class="w-speed" style="color:var(--text-muted)">${fmt(sp)} ks/h</span>
+        ${deltaHtml}
+      </div>`;
+    });
+    workerHtml += '</div>';
+  });
+  document.getElementById('worker-months').innerHTML = workerHtml;
+}
+
+// ── Tab switch ─────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-celkem').style.display = name === 'celkem' ? 'block' : 'none';
+  document.getElementById('tab-pracovnici').style.display = name === 'pracovnici' ? 'block' : 'none';
+  document.getElementById('tab-hodnoceni').style.display = name === 'hodnoceni' ? 'block' : 'none';
+  const pdfBtn = document.getElementById('pdf-btn');
+  if (pdfBtn) pdfBtn.style.display = name === 'hodnoceni' && activeWorkerCard ? 'inline-flex' : 'none';
+  if (name === 'hodnoceni') buildWorkerPicker();
+}
+
+// ── Skupinový filtr ────────────────────────────────────────────────────────
+let activeGroupFilter = null;
+
+function buildGroupFilter() {
+  const wrap = document.getElementById('group-filter-chips');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  // Pouze typy které mají normu pro aktuální stroj nebo jsou v datech
+  const visibleTypes = ORDER_TYPES.filter(t => ['pizza','linteo','pm','magnet','notepads'].includes(t.key));
+  visibleTypes.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'group-btn';
+    btn.dataset.key = t.key;
+    btn.textContent = t.label;
+    const colors = getTypeColors();
+    const c = colors[t.key] || {};
+    btn.style.background = c.bg || 'var(--surface2)';
+    btn.style.color = c.text || 'var(--text-muted)';
+    btn.style.border = '0.5px solid ' + (c.text || 'var(--border-strong)') + '44';
+    btn.addEventListener('click', () => {
+      if (activeGroupFilter === t.key) {
+        activeGroupFilter = null;
+      } else {
+        activeGroupFilter = t.key;
+      }
+      applyGroupFilter();
+    });
+    wrap.appendChild(btn);
+  });
+  updateGroupBtnState();
+}
+
+function applyGroupFilter() {
+  document.querySelectorAll('#zakázky-checkboxes input').forEach(cb => {
+    const z = cb.value;
+    const typ = detectOrderType(z);
+    const match = activeGroupFilter === null || typ === activeGroupFilter;
+    cb.checked = match;
+    cb.closest('.chip').classList.toggle('excluded', !match);
+  });
+  updateZakázkyCount();
+  updateGroupBtnState();
+  renderResults();
+}
+
+function setGroupFilter(key) {
+  activeGroupFilter = key;
+  applyGroupFilter();
+}
+
+function updateGroupBtnState() {
+  document.querySelectorAll('.group-btn').forEach(btn => {
+    const active = btn.dataset.key === activeGroupFilter;
+    btn.style.fontWeight = active ? '700' : '500';
+    btn.style.boxShadow = active ? '0 0 0 2px currentColor' : 'none';
+    btn.style.opacity = activeGroupFilter && !active ? '0.45' : '1';
+  });
+}
+
+// ── Export ─────────────────────────────────────────────────────────────────
+function exportToXlsx() {
+  if (!analysisData) return;
+  const { byWorkerMonth, workers, machineName } = analysisData;
+  const activeWorkers = getActiveWorkers();
+  const activeZakázky = getActiveZakázky();
+  const activeWorkerList = workers.filter(w => activeWorkers.has(w));
+  const machineNorms = NORMS[machineName] || {};
+
+  // Rebuild filtered
+  const byMonth = {}, bwf = {};
+  workers.forEach(w => {
+    if (!activeWorkers.has(w)) return;
+    Object.entries(byWorkerMonth[w]).forEach(([ym, d]) => {
+      let fq = 0, fm = 0;
+      const abt = {};
+      Object.entries(d.byZakázka).forEach(([z, zd]) => {
+        if (!activeZakázky.has(z)) return;
+        fq += zd.qty; fm += zd.mins;
+        const typ = detectOrderType(z);
+        if (typ) { if (!abt[typ]) abt[typ] = { qty:0, mins:0 }; abt[typ].qty += zd.qty; abt[typ].mins += zd.mins; }
+      });
+      if (fm === 0) return;
+      if (!byMonth[ym]) byMonth[ym] = { qty:0, mins:0 };
+      byMonth[ym].qty += fq; byMonth[ym].mins += fm;
+      if (!bwf[w]) bwf[w] = {};
+      bwf[w][ym] = { qty:fq, mins:fm, notes:d.notes.filter(n=>activeZakázky.has(n.zakázka)), byZakázka:d.byZakázka, activeByType:abt };
+    });
+  });
+  const months = Object.keys(byMonth).sort();
+  const wb = XLSX.utils.book_new();
+  const title = machineName + ' — ' + document.getElementById('operation').value.trim();
+  const dateNow = new Date().toLocaleDateString('cs-CZ');
+
+  // List 1: Přehled
+  const sh1 = [[title],['Export: ' + dateNow],[],['LIST 1 — PŘEHLED PO MĚSÍCÍCH'],[],
+    ['Měsíc','Průměrná rychlost (ks/h)','Množství (ks)','Čas (h)']];
+  let tq=0, tm=0;
+  months.forEach(m => {
+    const d=byMonth[m]; const sp=d.mins>0?Math.round(d.qty/d.mins*60):0;
+    sh1.push([monthLabel(m),sp,Math.round(d.qty),Math.round(d.mins/60*10)/10]);
+    tq+=d.qty; tm+=d.mins;
+  });
+  sh1.push([]); sh1.push(['CELKEM',tm>0?Math.round(tq/tm*60):0,Math.round(tq),Math.round(tm/60*10)/10]);
+  const ws1=XLSX.utils.aoa_to_sheet(sh1); ws1['!cols']=[{wch:14},{wch:26},{wch:16},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,ws1,'Přehled');
+
+  // List 2: Pracovníci
+  const sh2=[[title],['Export: '+dateNow],[],['LIST 2 — PRACOVNÍCI PO MĚSÍCÍCH']];
+  months.forEach(m => {
+    sh2.push([]); sh2.push([monthLabel(m).toUpperCase()]);
+    sh2.push(['Pracovník','Průměrná rychlost (ks/h)','Množství (ks)','Čas (h)','Norma (ks/h)','Rozdíl (%)']);
+    const md=byMonth[m]; const tots=md.mins>0?Math.round(md.qty/md.mins*60):0;
+    sh2.push(['Stroj celkem',tots,Math.round(md.qty),Math.round(md.mins/60*10)/10,'—','—']);
+    activeWorkerList.forEach(w => {
+      const wd=bwf[w]?.[m]; if(!wd) return;
+      const sp=wd.mins>0?Math.round(wd.qty/wd.mins*60):0;
+      let nn=null, nd=0;
+      Object.entries(wd.activeByType||{}).forEach(([typ,td])=>{ const n=machineNorms[typ]; if(n){nn=(nn||0)+n*td.mins;nd+=td.mins;} });
+      const norm=nn!==null&&nd>0?Math.round(nn/nd):null;
+      const diffPct=norm?Math.round((sp-norm)/norm*100):null;
+      sh2.push([w,sp,Math.round(wd.qty),Math.round(wd.mins/60*10)/10,norm||'—',diffPct!==null?(diffPct>0?'+':'')+diffPct+' %':'—']);
+    });
+  });
+  const ws2=XLSX.utils.aoa_to_sheet(sh2); ws2['!cols']=[{wch:22},{wch:26},{wch:16},{wch:10},{wch:16},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,ws2,'Pracovníci');
+
+  // List 3: Poznámky
+  const sh3=[[title],['Export: '+dateNow],[],['LIST 3 — POZNÁMKY'],[],['Datum','Pracovník','Zakázka','Poznámka']];
+  let nc=0;
+  months.forEach(m=>{ activeWorkerList.forEach(w=>{ const wd=bwf[w]?.[m]; if(!wd||!wd.notes.length) return; wd.notes.forEach(n=>{ sh3.push([n.date,w,n.zakázka,n.note]); nc++; }); }); });
+  if(!nc) sh3.push(['(žádné poznámky v aktuálním filtru)']);
+  const ws3=XLSX.utils.aoa_to_sheet(sh3); ws3['!cols']=[{wch:12},{wch:22},{wch:36},{wch:60}];
+  XLSX.utils.book_append_sheet(wb,ws3,'Poznámky');
+
+  // List 4: Zakázky
+  const sh4=[[title],['Export: '+dateNow],[],['LIST 4 — DETAIL PO ZAKÁZKÁCH'],[],
+    ['Měsíc','Pracovník','Zakázka','Typ','Průměrná rychlost (ks/h)','Norma (ks/h)','Rozdíl (%)','Množství (ks)','Čas (h)']];
+  months.forEach(m=>{ activeWorkerList.forEach(w=>{ const wd=bwf[w]?.[m]; if(!wd) return;
+    Object.entries(wd.byZakázka||{}).forEach(([z,zd])=>{
+      if(!activeZakázky.has(z)||zd.mins===0) return;
+      const sp=Math.round(zd.qty/zd.mins*60);
+      const typ=detectOrderType(z);
+      const norm=getNorm(machineName,typ);
+      const diffPct=norm?Math.round((sp-norm)/norm*100):null;
+      const typLabel=typ?ORDER_TYPES.find(t=>t.key===typ)?.label||typ:'—';
+      sh4.push([monthLabel(m),w,z,typLabel,sp,norm||'—',diffPct!==null?(diffPct>0?'+':'')+diffPct+' %':'—',Math.round(zd.qty),Math.round(zd.mins/60*10)/10]);
+    }); }); });
+  const ws4=XLSX.utils.aoa_to_sheet(sh4); ws4['!cols']=[{wch:12},{wch:22},{wch:36},{wch:12},{wch:26},{wch:16},{wch:12},{wch:16},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,ws4,'Zakázky');
+
+  XLSX.writeFile(wb, machineName.replace(/[^a-zA-Z0-9_\-]/g,'_')+'_produktivita_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+// ── Karta pracovníka ───────────────────────────────────────────────────────
+let activeWorkerCard = null;
+let workerCardCharts = [];
+
+function buildWorkerPicker() {
+  if (!analysisData) return;
+  const grid = document.getElementById('worker-picker-grid');
+  grid.innerHTML = '';
+  const activeWorkers = getActiveWorkers();
+  analysisData.workers.filter(w => activeWorkers.has(w)).forEach(w => {
+    const btn = document.createElement('button');
+    btn.className = 'wpick-btn' + (w === activeWorkerCard ? ' active' : '');
+    btn.textContent = w;
+    btn.onclick = () => { activeWorkerCard = w; buildWorkerPicker(); renderWorkerCard(w); };
+    grid.appendChild(btn);
+  });
+  if (activeWorkerCard && activeWorkers.has(activeWorkerCard)) renderWorkerCard(activeWorkerCard);
+}
+
+function renderWorkerCard(workerName) {
+  if (!analysisData) return;
+  const { byWorkerMonth, workers, machineName } = analysisData;
+  const activeWorkers = getActiveWorkers();
+  const activeZakázky = getActiveZakázky();
+  const machineNorms = NORMS[machineName] || {};
+
+  const pdfBtn = document.getElementById('pdf-btn');
+  if (pdfBtn) pdfBtn.style.display = 'inline-flex';
+
+  // ── helper: filtrovaná data pro jednoho pracovníka ──────────────────────
+  function buildWorkerData(w) {
+    const out = {};
+    if (!byWorkerMonth[w]) return out;
+    Object.entries(byWorkerMonth[w]).forEach(([ym, d]) => {
+      let fq=0, fm=0; const abt={};
+      Object.entries(d.byZakázka).forEach(([z, zd]) => {
+        if (!activeZakázky.has(z)) return;
+        fq+=zd.qty; fm+=zd.mins;
+        const typ=detectOrderType(z);
+        if (typ) { if (!abt[typ]) abt[typ]={qty:0,mins:0}; abt[typ].qty+=zd.qty; abt[typ].mins+=zd.mins; }
+        else { if (!abt['__other__']) abt['__other__']={qty:0,mins:0}; abt['__other__'].qty+=zd.qty; abt['__other__'].mins+=zd.mins; }
+      });
+      if (fm===0) return;
+      out[ym]={qty:fq, mins:fm, activeByType:abt};
+    });
+    return out;
+  }
+
+  const selfData = buildWorkerData(workerName);
+  const months = Object.keys(selfData).sort();
+  if (!months.length) {
+    document.getElementById('worker-card-content').innerHTML = '<p style="color:var(--text-hint);font-size:13px;">Žádná data pro tohoto pracovníka v aktuálním filtru.</p>';
+    return;
+  }
+
+  const otherWorkers = workers.filter(w => activeWorkers.has(w) && w !== workerName);
+  const otherData = {};
+  otherWorkers.forEach(w => { otherData[w] = buildWorkerData(w); });
+
+  // ── celkové stats ─────────────────────────────────────────────────────────
+  let selfTotalQty=0, selfTotalMins=0;
+  months.forEach(m => { selfTotalQty+=selfData[m].qty; selfTotalMins+=selfData[m].mins; });
+  const selfAvgSpeed = selfTotalMins>0 ? Math.round(selfTotalQty/selfTotalMins*60) : 0;
+  const selfTotalH = Math.round(selfTotalMins/60*10)/10;
+
+  let peerTQ=0, peerTM=0;
+  otherWorkers.forEach(w=>{ Object.values(otherData[w]).forEach(d=>{peerTQ+=d.qty;peerTM+=d.mins;}); });
+  const peerAvgSpeed = peerTM>0 ? Math.round(peerTQ/peerTM*60) : null;
+
+  // ── per-type agregace pro self a peers ───────────────────────────────────
+  // typeKey → { selfQty, selfMins, peerMonthData: {ym: {qty,mins}} }
+  const ALL_TYPE_KEYS = [...ORDER_TYPES.map(t=>t.key), '__other__'];
+  const typeAgg = {};
+  ALL_TYPE_KEYS.forEach(k => { typeAgg[k]={ selfQty:0, selfMins:0, selfByMonth:{}, peerByMonth:{} }; });
+
+  months.forEach(m => {
+    const d = selfData[m];
+    Object.entries(d.activeByType).forEach(([typ, td]) => {
+      if (!typeAgg[typ]) typeAgg[typ]={ selfQty:0, selfMins:0, selfByMonth:{}, peerByMonth:{} };
+      typeAgg[typ].selfQty += td.qty;
+      typeAgg[typ].selfMins += td.mins;
+      if (!typeAgg[typ].selfByMonth[m]) typeAgg[typ].selfByMonth[m]={qty:0,mins:0};
+      typeAgg[typ].selfByMonth[m].qty += td.qty;
+      typeAgg[typ].selfByMonth[m].mins += td.mins;
+    });
+  });
+
+  // peers per type per month
+  otherWorkers.forEach(w => {
+    Object.entries(otherData[w]).forEach(([m, d]) => {
+      Object.entries(d.activeByType).forEach(([typ, td]) => {
+        if (!typeAgg[typ]) typeAgg[typ]={ selfQty:0, selfMins:0, selfByMonth:{}, peerByMonth:{} };
+        if (!typeAgg[typ].peerByMonth[m]) typeAgg[typ].peerByMonth[m]={qty:0,mins:0};
+        typeAgg[typ].peerByMonth[m].qty += td.qty;
+        typeAgg[typ].peerByMonth[m].mins += td.mins;
+      });
+    });
+  });
+
+  // ranking všech pracovníků celkově
+  const allWorkerSpeeds = workers.filter(w=>activeWorkers.has(w)).map(w=>{
+    const wd=buildWorkerData(w); let q=0,m=0;
+    Object.values(wd).forEach(d=>{q+=d.qty;m+=d.mins;});
+    return {w, speed:m>0?Math.round(q/m*60):0};
+  }).sort((a,b)=>b.speed-a.speed);
+  const maxAllSpeed = allWorkerSpeeds[0]?.speed||1;
+
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const textColor = isDark?'#9e9c96':'#6b6a65';
+  const gridColor = isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.06)';
+  const monthLabelsArr = months.map(monthLabel);
+
+  // ── helper: render jednoho čárového grafu ────────────────────────────────
+  function makeLineChart(canvasId, selfSpeeds, peerSpeeds, fixedNorm, workerLabel) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+    const ds = [{
+      label: workerLabel,
+      data: selfSpeeds,
+      borderColor: isDark?'#85b7eb':'#185fa5',
+      backgroundColor: 'transparent',
+      tension: 0.3, pointRadius: 4,
+      pointBackgroundColor: isDark?'#85b7eb':'#185fa5',
+      borderWidth: 2.5
+    }];
+    if (peerSpeeds && peerSpeeds.some(v=>v!==null))
+      ds.push({label:'Průměr ostatních',data:peerSpeeds,borderColor:isDark?'#666':'#aaa',backgroundColor:'transparent',tension:0.3,pointRadius:3,borderWidth:1.5,borderDash:[4,3]});
+    if (fixedNorm!==null)
+      ds.push({label:'Norma ('+fmt(fixedNorm)+' ks/h)',data:months.map(()=>fixedNorm),borderColor:isDark?'#fbbf24':'#d97706',backgroundColor:'transparent',tension:0,pointRadius:0,borderWidth:2,borderDash:[6,4]});
+    workerCardCharts.push(new Chart(ctx,{
+      type:'line', data:{labels:monthLabelsArr, datasets:ds},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{color:textColor,font:{size:11},boxWidth:18}},
+                 tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.parsed.y||0).toLocaleString('cs-CZ')+' ks/h'}}},
+        scales:{
+          y:{ticks:{color:textColor,font:{size:11},callback:v=>v.toLocaleString('cs-CZ')},grid:{color:gridColor}},
+          x:{ticks:{color:textColor,font:{size:11},maxRotation:45},grid:{display:false}}
+        }
+      }
+    }));
+  }
+
+  // ── helper: KPI box HTML ──────────────────────────────────────────────────
+  function kpiBox(label, value, unit, delta, deltaClass) {
+    const deltaHtml = delta!==null ? `<div class="wcard-kpi-delta ${deltaClass}">${deltaClass==='above'?'↑ +':'↓ '}${delta} % ${deltaClass==='above'?'nad normou':'pod normou'}</div>` : '';
+    return `<div class="wcard-kpi-item"><div class="wcard-kpi-label">${label}</div><div class="wcard-kpi-value">${value} <span class="wcard-kpi-unit">${unit}</span></div>${deltaHtml}</div>`;
+  }
+
+  // ── sestavit HTML ─────────────────────────────────────────────────────────
+  workerCardCharts.forEach(c=>{ try{c.destroy();}catch(e){} });
+  workerCardCharts=[];
+
+  let html = `
+    <div class="wcard-header">
+      <span class="wcard-name">${workerName}</span>
+      <span class="wcard-sub">${machineName} &nbsp;·&nbsp; ${months.length} měsíců dat</span>
+    </div>
+    <div class="wcard-kpi">
+      ${kpiBox('Průměrná rychlost celkem', fmt(selfAvgSpeed), 'ks/h', null, '')}
+      ${kpiBox('Odpracovaný čas', selfTotalH.toLocaleString('cs-CZ'), 'h', null, '')}
+      ${kpiBox('Celkové množství', fmt(selfTotalQty), 'ks', null, '')}
+      ${peerAvgSpeed ? kpiBox('Průměr ostatních', fmt(peerAvgSpeed), 'ks/h', null, '') : ''}
+    </div>`;
+
+  // ── sekce per typ zakázky ─────────────────────────────────────────────────
+  const typesToShow = [...ORDER_TYPES, {key:'__other__', label:'Ostatní zakázky'}];
+  const chartIdxCounter = {n:0};
+
+  typesToShow.forEach(t => {
+    const agg = typeAgg[t.key];
+    if (!agg || (agg.selfMins===0 && Object.keys(agg.peerByMonth).length===0)) return;
+
+    const norm = machineNorms[t.key] || null;
+    const selfSp = agg.selfMins>0 ? Math.round(agg.selfQty/agg.selfMins*60) : null;
+    const peerTotQ = Object.values(agg.peerByMonth).reduce((s,d)=>s+d.qty,0);
+    const peerTotM = Object.values(agg.peerByMonth).reduce((s,d)=>s+d.mins,0);
+    const peerSp = peerTotM>0 ? Math.round(peerTotQ/peerTotM*60) : null;
+    const vNorm = norm&&selfSp!==null ? Math.round((selfSp-norm)/norm*100) : null;
+    const vPeer = peerSp&&selfSp!==null ? Math.round((selfSp-peerSp)/peerSp*100) : null;
+    const selfH = Math.round(agg.selfMins/60*10)/10;
+
+    const cid = 'wcard-type-chart-'+chartIdxCounter.n++;
+    const selfMonthArr = months.map(m=>{ const d=agg.selfByMonth[m]; return d&&d.mins>0?Math.round(d.qty/d.mins*60):null; });
+    const peerMonthArr = months.map(m=>{ const d=agg.peerByMonth[m]; return d&&d.mins>0?Math.round(d.qty/d.mins*60):null; });
+
+    html += `<div class="wcard-section">
+      <div class="wcard-section-title">${t.label}${norm?` <span style="font-weight:400;font-size:11px;color:var(--text-hint)">norma ${fmt(norm)} ks/h</span>`:'<span style="font-weight:400;font-size:11px;color:var(--text-hint)"> — bez normy, srovnání s ostatními</span>'}</div>
+      <div class="wcard-kpi" style="margin-bottom:1rem;">
+        ${selfSp!==null ? kpiBox('Rychlost', fmt(selfSp), 'ks/h', vNorm, vNorm!==null?(vNorm>=0?'above':'below'):'') : ''}
+        ${norm ? `<div class="wcard-kpi-item"><div class="wcard-kpi-label">Norma</div><div class="wcard-kpi-value">${fmt(norm)} <span class="wcard-kpi-unit">ks/h</span></div></div>` : ''}
+        ${peerSp!==null ? kpiBox('Průměr ostatních', fmt(peerSp), 'ks/h', vPeer, vPeer!==null?(vPeer>=0?'above':'below'):'') : ''}
+        <div class="wcard-kpi-item"><div class="wcard-kpi-label">Odprac. čas</div><div class="wcard-kpi-value">${selfH.toLocaleString('cs-CZ')} <span class="wcard-kpi-unit">h</span></div></div>
+      </div>
+      <div class="wcard-chart-wrap"><canvas id="${cid}"></canvas></div>
+    </div>`;
+
+    // defer chart rendering
+    setTimeout(()=>{ makeLineChart(cid, selfMonthArr, peerMonthArr, norm, workerName); }, 0);
+  });
+
+  // ── anonymní žebříček ─────────────────────────────────────────────────────
+  html += `<div class="wcard-section"><div class="wcard-section-title">Anonymní srovnání — celková rychlost</div>`;
+  allWorkerSpeeds.forEach((entry,idx)=>{
+    const isSelf = entry.w===workerName;
+    const label = isSelf ? workerName : `Pracovník ${idx+1}`;
+    const pct = Math.round(entry.speed/maxAllSpeed*100);
+    html += `<div class="anon-row">
+      <span class="anon-label ${isSelf?'highlight':''}">${label}</span>
+      <div class="anon-bar-wrap"><div class="anon-bar ${isSelf?'self':'other'}" style="width:${pct}%"></div></div>
+      <span class="anon-speed ${isSelf?'highlight':''}">${fmt(entry.speed)} ks/h</span>
+    </div>`;
+  });
+  html += `</div>`;
+
+  document.getElementById('worker-card-content').innerHTML = html;
+  // charts are rendered via setTimeout above after DOM update
+}
+
+function exportWorkerPdf() {
+  if (!activeWorkerCard) return;
+  const cardEl = document.getElementById('worker-card-content');
+  if (!cardEl) return;
+  const canvasImgs = {};
+  cardEl.querySelectorAll('canvas').forEach(c => { canvasImgs[c.id] = c.toDataURL('image/png'); });
+  const clone = cardEl.cloneNode(true);
+  clone.querySelectorAll('canvas').forEach(c => {
+    const img = document.createElement('img');
+    img.src = canvasImgs[c.id] || '';
+    img.style.cssText = 'width:100%;height:auto;display:block;';
+    c.parentNode.replaceChild(img, c);
+  });
+  const machineName = document.getElementById('machine-name').value.trim() || 'Stroj';
+  const dateStr = new Date().toLocaleDateString('cs-CZ');
+  const css = '*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}'
+    + 'body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,system-ui,sans-serif;background:#fff;color:#111;font-size:11pt;line-height:1.5;padding:14mm 16mm;}'
+    + '.pdf-header{display:flex;justify-content:space-between;border-bottom:1px solid #ddd;padding-bottom:8px;margin-bottom:16px;}'
+    + '.pdf-title{font-size:16pt;font-weight:700;}'
+    + '.wcard-header{margin-bottom:14px;}.wcard-name{font-size:18pt;font-weight:700;display:block;}.wcard-sub{font-size:9pt;color:#777;}'
+    + '.wcard-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:7px;margin-bottom:14px;}'
+    + '.wcard-kpi-item{background:#f4f4f4;border-radius:5px;padding:9px 11px;}'
+    + '.wcard-kpi-label{font-size:7.5pt;color:#888;margin-bottom:2px;}.wcard-kpi-value{font-size:14pt;font-weight:700;}.wcard-kpi-unit{font-size:8.5pt;font-weight:400;color:#888;}'
+    + '.wcard-kpi-delta{font-size:8.5pt;font-weight:600;margin-top:2px;}.wcard-kpi-delta.above{color:#2e7d32;}.wcard-kpi-delta.below{color:#c62828;}'
+    + '.wcard-section{margin-bottom:16px;page-break-inside:avoid;}'
+    + '.wcard-section-title{font-size:7.5pt;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;padding-bottom:5px;border-bottom:.5px solid #ddd;margin-bottom:8px;}'
+    + '.wcard-chart-wrap img{width:100%;height:auto;display:block;}'
+    + '.anon-row{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:9.5pt;}'
+    + '.anon-label{flex:0 0 130px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
+    + '.anon-label.highlight{color:#1565c0;font-weight:700;}'
+    + '.anon-bar-wrap{flex:1;background:#e8e8e8;border-radius:3px;height:8px;overflow:hidden;position:relative;}'
+    + '.anon-bar{height:100%;border-radius:3px;}.anon-bar.self{background:#1565c0;}.anon-bar.other{background:#bbb;}'
+    + '.anon-speed{flex:0 0 80px;text-align:right;color:#666;font-size:9.5pt;}.anon-speed.highlight{color:#111;font-weight:700;}'
+    + '.delta-cell{font-weight:600;border-radius:3px;padding:1px 5px;display:inline-block;font-size:8.5pt;}'
+    + '.delta-cell.above{background:#e8f5e9;color:#2e7d32;}.delta-cell.below{background:#fdecea;color:#c62828;}'
+    + '.type-compare-table{width:100%;border-collapse:collapse;font-size:8.5pt;margin-top:5px;}'
+    + '.type-compare-table th{text-align:left;padding:5px 7px;font-size:7.5pt;font-weight:700;color:#888;text-transform:uppercase;border-bottom:.5px solid #ddd;}'
+    + '.type-compare-table th:not(:first-child){text-align:right;}'
+    + '.type-compare-table td{padding:5px 7px;border-bottom:.5px solid #eee;}.type-compare-table td:not(:first-child){text-align:right;}'
+    + '.anon-norm-line{position:absolute;top:0;width:2px;height:100%;background:#555;opacity:.4;}'
+    + '.no-print{display:none!important;}'
+    + '@media print{body{padding:8mm 10mm;}.wcard-section{page-break-inside:avoid;}}';
+  const header = '<div class="pdf-header"><span class="pdf-title">' + activeWorkerCard + '</span>'
+    + '<span style="font-size:9pt;color:#777;">' + machineName + ' · ' + dateStr + '</span></div>';
+  const printBtn = '<div class="no-print" style="margin-top:20px;text-align:center;">'
+    + '<button onclick="window.print()" style="padding:9px 24px;font-size:13px;background:#185fa5;color:#fff;border:none;border-radius:6px;cursor:pointer;">'
+    + 'Tisknout / Ulozit jako PDF</button></div>';
+  const win = window.open('', '_blank');
+  win.document.write('<!DOCTYPE html><html lang="cs"><head><meta charset="UTF-8">'
+    + '<title>Hodnoceni — ' + activeWorkerCard + '</title>'
+    + '<style>' + css + '</style></head><body>'
+    + header + clone.innerHTML + printBtn + '</body></html>');
+  win.document.close();
+}
+
+
+</script>
+</body>
+</html>

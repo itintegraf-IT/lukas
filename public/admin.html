@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BOBR — správa uživatelů</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --press:#15171b; --panel:#1c1f25; --line:#2b2f38; --paper:#f2f0ec; --muted:#8b929c;
+    --c:#009fe3; --ok:#3ecf8e; --bad:#ff6b6b;
+    --mono:"Space Mono",ui-monospace,monospace; --sans:"Inter","Segoe UI",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--press);color:var(--paper);font:15px/1.5 var(--sans);padding:24px}
+  a{color:var(--muted);text-decoration:none} a:hover{color:var(--paper)}
+  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;flex-wrap:wrap;gap:10px}
+  h1{font:700 15px/1 var(--mono);letter-spacing:.28em;text-transform:uppercase;margin:0}
+  h1 small{display:block;color:var(--muted);font:400 11px/1.4 var(--mono);letter-spacing:.1em;margin-top:5px}
+  .card{background:var(--panel);border:1px solid var(--line);padding:18px;margin-bottom:18px}
+  .card h2{font:700 11px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0 0 14px}
+  label{display:block;font:700 10px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+  input[type=text],input[type=password],input[type=email]{background:#101216;border:1px solid var(--line);color:var(--paper);padding:9px 11px;font:14px var(--sans);width:100%}
+  input:focus{outline:none;border-color:var(--c)}
+  .newrow{display:grid;grid-template-columns:1fr 1fr auto auto;gap:12px;align-items:end}
+  @media(max-width:640px){.newrow{grid-template-columns:1fr}}
+  .btn{background:var(--paper);color:#101216;border:0;padding:10px 14px;font:700 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;cursor:pointer;white-space:nowrap}
+  .btn:hover{background:#fff}
+  .btn.ghost{background:none;color:var(--muted);border:1px solid var(--line)}
+  .btn.ghost:hover{color:var(--paper);border-color:var(--muted)}
+  .btn.danger{background:none;color:var(--bad);border:1px solid #4a2b2f}
+  .btn.danger:hover{background:#2a1618}
+  .chk{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{font:700 9px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  td.email{font-weight:600}
+  select{background:#101216;border:1px solid var(--line);color:var(--paper);padding:6px 6px;font:12px var(--sans)}
+  select.set{border-color:var(--c)}
+  .wrap{overflow-x:auto}
+  .msg{min-height:20px;font-size:13px;margin-top:10px}
+  .msg.ok{color:var(--ok)} .msg.err{color:var(--bad)}
+  .selfmark{font:700 8px/1 var(--mono);letter-spacing:.1em;color:var(--muted);border:1px solid var(--line);padding:2px 5px;margin-left:6px}
+  .noaccess{max-width:420px;margin:12vh auto;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+  <div id="app" style="display:none">
+    <div class="top">
+      <h1>Správa uživatelů<small>BOBR — jen pro administrátory</small></h1>
+      <div style="display:flex;gap:12px;align-items:center">
+        <a href="index.html">← Panel</a>
+        <button class="btn ghost" id="logoutBtn">Odhlásit</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Nový uživatel</h2>
+      <div class="newrow">
+        <div><label>E-mail</label><input type="email" id="nEmail" autocomplete="off"></div>
+        <div><label>Heslo</label><input type="password" id="nPass" autocomplete="new-password"></div>
+        <label class="chk" style="padding-bottom:9px"><input type="checkbox" id="nAdmin"> administrátor</label>
+        <button class="btn" id="addBtn">Přidat</button>
+      </div>
+      <div class="msg" id="addMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2>Uživatelé a práva</h2>
+      <div class="wrap">
+        <table id="tbl">
+          <thead>
+            <tr>
+              <th>E-mail</th><th>Admin</th><th>Poslední přihl.</th>
+              <th>KPI</th><th>Produktivita</th><th>Směny</th><th>Stroje</th>
+              <th>Heslo</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="msg" id="tblMsg"></div>
+      <p style="color:var(--muted);font-size:12px;margin-top:14px">Administrátor má vždy plný přístup ke všem aplikacím a jako jediný smí obnovu ze zálohy. „—" = bez přístupu, „náhled" = jen čtení, „editace" = i ukládání.</p>
+    </div>
+
+    <div class="card">
+      <h2>Poslední aktivita</h2>
+      <div class="wrap">
+        <table>
+          <thead><tr><th style="width:150px">Kdy</th><th style="width:180px">Kdo</th><th style="width:120px">Akce</th><th>Detail</th></tr></thead>
+          <tbody id="actRows"></tbody>
+        </table>
+      </div>
+      <div class="msg" id="actMsg"></div>
+    </div>
+  </div>
+
+  <div id="noaccess" class="noaccess" style="display:none">
+    <p>Tato stránka je jen pro administrátory.</p>
+    <p><a href="index.html">← Zpět na panel</a></p>
+  </div>
+
+<script src="api.js"></script>
+<script>
+  const APPS = [["kpi","KPI"],["produktivita","Produktivita"],["smeny","Směny"],["stroje","Stroje"]];
+  const $ = s => document.querySelector(s);
+  let meId = null;
+
+  async function api(path, method, body){
+    const r = await fetch("/api"+path, {
+      method: method||"GET", credentials:"include",
+      headers: body ? {"Content-Type":"application/json"} : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    let data = null; try{ data = await r.json(); }catch(e){}
+    return { ok:r.ok, status:r.status, data };
+  }
+
+  function esc(s){ return String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+  function fmtDate(s){ if(!s) return "—"; const d=new Date(s); return isNaN(d) ? "—" : d.toLocaleString("cs-CZ",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}); }
+  const ACTIONS = { login:"přihlášení", password_change:"změna hesla", password_reset:"reset hesla", user_create:"nový uživatel", user_delete:"smazán uživatel", user_admin:"změna admina", perm_set:"právo nastaveno", perm_remove:"právo odebráno" };
+
+  async function loadActivity(){
+    const { ok, data } = await api("/activity?limit=60");
+    if(!ok){ $("#actMsg").className="msg err"; $("#actMsg").textContent="Aktivitu se nepodařilo načíst."; return; }
+    $("#actRows").innerHTML = (data.activity||[]).map(a=>`<tr>
+      <td style="color:var(--muted);white-space:nowrap">${fmtDate(a.at)}</td>
+      <td>${esc(a.email||"—")}</td>
+      <td>${esc(ACTIONS[a.action]||a.action)}</td>
+      <td style="color:var(--muted)">${esc(a.detail||"")}</td>
+    </tr>`).join("") || '<tr><td colspan="4" style="color:var(--muted)">Zatím žádné záznamy.</td></tr>';
+  }
+
+  async function boot(){
+    const me = await requireAuth("index.html");
+    if(!me) return;
+    if(!me.is_admin){ $("#noaccess").style.display="block"; return; }
+    $("#app").style.display="block";
+    $("#logoutBtn").onclick = ()=>signOut("index.html");
+    $("#addBtn").onclick = addUser;
+    loadUsers();
+    loadActivity();
+  }
+
+  async function loadUsers(){
+    const { ok, data } = await api("/users");
+    if(!ok){ $("#tblMsg").className="msg err"; $("#tblMsg").textContent="Nepodařilo se načíst uživatele."; return; }
+    meId = data.me_id;
+    const rows = data.users.map(u=>{
+      const roleOf = k => (u.permissions.find(p=>p.app_key===k)||{}).role || "";
+      const self = u.id===meId;
+      const cells = APPS.map(([k])=>{
+        const r = roleOf(k);
+        return `<td><select data-uid="${u.id}" data-app="${k}" class="${r?'set':''}" ${u.is_admin?'disabled title="admin má vše"':''}>
+          <option value="">—</option>
+          <option value="view" ${r==='view'?'selected':''}>náhled</option>
+          <option value="edit" ${r==='edit'?'selected':''}>editace</option>
+        </select></td>`;
+      }).join("");
+      return `<tr>
+        <td class="email">${esc(u.email)}${self?'<span class="selfmark">TY</span>':''}</td>
+        <td><input type="checkbox" data-admin="${u.id}" ${u.is_admin?'checked':''} ${self?'disabled':''}></td>
+        <td style="color:var(--muted);white-space:nowrap">${fmtDate(u.last_login)}</td>
+        ${cells}
+        <td><button class="btn ghost" data-pass="${u.id}">Změnit</button></td>
+        <td><button class="btn danger" data-del="${u.id}" ${self?'disabled':''}>Smazat</button></td>
+      </tr>`;
+    }).join("");
+    $("#rows").innerHTML = rows;
+
+    $("#rows").querySelectorAll("select[data-uid]").forEach(sel=>sel.onchange = onRoleChange);
+    $("#rows").querySelectorAll("input[data-admin]").forEach(c=>c.onchange = onAdminToggle);
+    $("#rows").querySelectorAll("button[data-pass]").forEach(b=>b.onclick = ()=>resetPass(b.dataset.pass));
+    $("#rows").querySelectorAll("button[data-del]").forEach(b=>b.onclick = ()=>delUser(b.dataset.del, b.closest("tr").querySelector(".email").textContent));
+  }
+
+  function flash(el, ok, text){ el.className = "msg "+(ok?"ok":"err"); el.textContent = text; setTimeout(()=>{el.textContent="";}, 2500); }
+
+  async function addUser(){
+    const email = $("#nEmail").value.trim();
+    const password = $("#nPass").value;
+    const is_admin = $("#nAdmin").checked;
+    if(!email || !password){ flash($("#addMsg"), false, "Vyplň e-mail i heslo."); return; }
+    const { ok, status } = await api("/users","POST",{email,password,is_admin});
+    if(ok){ $("#nEmail").value=""; $("#nPass").value=""; $("#nAdmin").checked=false; flash($("#addMsg"), true, "Uživatel přidán."); loadUsers(); }
+    else flash($("#addMsg"), false, status===409 ? "Tento e-mail už existuje." : "Přidání se nezdařilo.");
+  }
+
+  async function onRoleChange(e){
+    const sel = e.target, uid = sel.dataset.uid, app = sel.dataset.app, role = sel.value;
+    const res = role ? await api("/permissions","POST",{user_id:+uid, app_key:app, role})
+                      : await api("/permissions","DELETE",{user_id:+uid, app_key:app});
+    sel.classList.toggle("set", !!role);
+    flash($("#tblMsg"), res.ok, res.ok ? "Uloženo." : "Nepodařilo se uložit.");
+  }
+
+  async function onAdminToggle(e){
+    const uid = e.target.dataset.admin, val = e.target.checked;
+    const res = await api(`/users/${uid}/admin`,"POST",{is_admin:val});
+    flash($("#tblMsg"), res.ok, res.ok ? "Uloženo." : "Nepodařilo se uložit.");
+    if(res.ok) loadUsers();
+  }
+
+  async function resetPass(uid){
+    const p = prompt("Nové heslo pro uživatele:");
+    if(!p) return;
+    const res = await api(`/users/${uid}/password`,"POST",{password:p});
+    flash($("#tblMsg"), res.ok, res.ok ? "Heslo změněno." : "Nepodařilo se změnit heslo.");
+  }
+
+  async function delUser(uid, email){
+    if(!confirm(`Opravdu smazat uživatele ${email}? Tato akce je nevratná.`)) return;
+    const res = await api(`/users/${uid}`,"DELETE");
+    flash($("#tblMsg"), res.ok, res.ok ? "Uživatel smazán." : "Nepodařilo se smazat.");
+    if(res.ok) loadUsers();
+  }
+
+  boot();
+</script>
+</body>
+</html>

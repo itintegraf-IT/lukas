@@ -1,0 +1,17 @@
+# === NIKDY necommitovat tajné údaje ===
+# Skutečná konfigurace s heslem k DB je v .env (mimo verzování).
+.env
+.env.*
+secrets/
+
+# závislosti (instalují se přes `npm install`)
+node_modules/
+
+# build / dočasné
+dist/
+*.log
+*.tmp
+
+# systémové
+.DS_Store
+Thumbs.db

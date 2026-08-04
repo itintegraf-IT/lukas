@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<title>Tiskové stroje — Integraf</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#222637;--border:#2e3350;
+  --accent:#4f7cff;--text:#e8eaf0;--text2:#8b90a8;
+  --green:#3ecf8e;--yellow:#f5c842;--red:#ff5c5c;--orange:#ff8c42;
+  --radius:9px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:13px;min-height:100vh;}
+
+/* HEADER */
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 22px;display:flex;align-items:stretch;gap:0;position:sticky;top:0;z-index:200;}
+.logo{font-size:10px;font-weight:700;letter-spacing:3px;color:var(--accent);text-transform:uppercase;opacity:.8;align-self:center;padding-right:14px;border-right:1px solid var(--border);}
+.htab{padding:0 16px;font-size:13px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--text2);border-bottom:3px solid transparent;transition:all .15s;display:flex;align-items:center;gap:7px;}
+.htab:hover{color:var(--text);}
+.htab.active{color:var(--text);border-bottom-color:var(--accent);}
+.htab .dot{width:7px;height:7px;border-radius:50%;background:var(--border);}
+.htab.active .dot{background:var(--accent);}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:8px;padding:8px 0;}
+.db-badge{font-size:11px;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:3px 9px;}
+.db-badge strong{color:var(--green);}
+#backup-toast{display:none;font-size:10px;color:var(--yellow);background:#2a2010;border:1px solid #5a4010;border-radius:5px;padding:3px 10px;}
+
+.main{padding:16px 22px;max-width:1700px;}
+
+/* MONTH BAR */
+.month-bar{display:flex;align-items:center;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+.mbtn{background:var(--surface2);border:1px solid var(--border);color:var(--text2);border-radius:5px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;}
+.mbtn:hover{border-color:var(--accent);color:var(--text);}
+.mbtn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+/* FILTERS */
+.filters{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.filters label{font-size:11px;color:var(--text2);}
+.filters select,.filters input[type=date]{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:4px 8px;font-size:11px;}
+.toggle-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text2);border-radius:5px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;}
+.toggle-btn.on{border-color:var(--accent);color:var(--accent);background:#1a2040;}
+.qbtn{background:var(--surface2);border:1px solid var(--border);color:var(--text2);border-radius:5px;padding:4px 10px;font-size:11px;cursor:pointer;transition:all .15s;}
+.qbtn:hover{border-color:var(--accent);color:var(--text);}
+
+/* CHARTS */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+@media(max-width:800px){.charts-row{grid-template-columns:1fr;}}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:13px 15px;}
+.chart-card h3{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;}
+.bar-row{display:flex;align-items:center;gap:7px;margin-bottom:5px;}
+.bar-label{font-size:10px;color:var(--text2);width:165px;text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bar-track{flex:1;background:var(--surface2);border-radius:3px;height:15px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:3px;transition:width .4s;}
+.bar-val{font-size:10px;color:var(--text2);width:55px;flex-shrink:0;}
+
+/* PENDING */
+.pending-section{background:var(--surface);border:1px solid #5a3080;border-radius:var(--radius);padding:12px 16px;margin-bottom:14px;}
+.pending-section h3{font-size:11px;font-weight:700;color:#c080ff;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.pending-badge{background:#5a3080;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;}
+.pending-row{display:flex;align-items:flex-start;gap:10px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);margin-bottom:5px;}
+.pending-row:last-child{margin-bottom:0;}
+.pending-meta{font-size:10px;color:var(--text2);line-height:1.6;min-width:110px;flex-shrink:0;}
+.pending-popis{font-size:11px;color:var(--text);flex:1;line-height:1.5;}
+
+/* IMPORT */
+.import-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:13px 16px;margin-bottom:14px;}
+.import-panel h2{font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text2);}
+.drop-zone{border:2px dashed var(--border);border-radius:7px;padding:12px 16px;text-align:center;cursor:pointer;transition:all .2s;font-size:12px;color:var(--text2);}
+.drop-zone:hover,.drop-zone.drag{border-color:var(--accent);background:#1a2040;color:var(--text);}
+.drop-zone input{display:none;}
+.imp-res{font-size:11px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface2);margin-top:6px;display:none;}
+.imp-res.ok{border-color:#3a6a3a;color:var(--green);}
+.imp-res.warn{border-color:#5a5a20;color:var(--yellow);}
+.imp-res.err{border-color:#6a2020;color:var(--red);}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);}
+table{width:100%;border-collapse:collapse;font-size:11px;}
+thead tr{background:var(--surface2);}
+thead th{padding:8px 9px;text-align:left;font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;}
+thead th:hover{color:var(--text);}
+thead th.sorted{color:var(--accent);}
+thead th.ns{cursor:default;}
+tbody tr{border-bottom:1px solid var(--border);}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:#1c2030;}
+tbody tr.is-del{opacity:.28;background:#180e0e;}
+tbody tr.date-hdr{background:#181c2c;pointer-events:none;}
+tbody tr.date-hdr td{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);padding:5px 9px 3px;border-bottom:1px solid var(--border);}
+td{padding:6px 9px;vertical-align:top;}
+td.chk{width:24px;text-align:center;vertical-align:middle;}
+td.chk input{cursor:pointer;accent-color:var(--accent);width:12px;height:12px;}
+td.datum{white-space:nowrap;color:var(--text2);}
+td.cas{white-space:nowrap;color:var(--text2);}
+td.trv{white-space:nowrap;font-weight:600;}
+td.trv.long{color:var(--red);}
+td.trv.med{color:var(--yellow);}
+td.trv.sht{color:var(--green);}
+td.popis{max-width:260px;}
+td.prac{white-space:nowrap;}
+td.zak{max-width:190px;color:var(--text2);font-size:10px;}
+td.note-cell{max-width:220px;font-size:10px;color:var(--text2);font-style:italic;white-space:pre-wrap;word-break:break-word;}
+td.note-cell.has-note{color:var(--yellow);font-style:normal;}
+.mbadge{display:inline-block;background:#2a3060;border:1px solid var(--accent);color:var(--accent);border-radius:3px;padding:1px 3px;font-size:8px;font-weight:700;margin-left:3px;vertical-align:middle;}
+.abt{background:none;border:none;cursor:pointer;font-size:12px;padding:0 2px;color:var(--text2);transition:color .12s;}
+.abt:hover{color:var(--red);}
+.abt.res:hover{color:var(--green);}
+.abt.note-btn.has-note{color:var(--yellow);}
+.abt.mail-btn{color:#8050c0;}
+.sent-badge{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:3px;vertical-align:middle;title:'Mail odeslán';}
+.sent-info{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:3px;vertical-align:middle;}
+.abt.mail-btn:hover{color:#c080ff;}
+.zak-warn{color:var(--yellow);font-size:9px;font-style:italic;}
+
+.sel-bar{display:none;background:#1b2b1b;border:1px solid #3a6a3a;border-radius:6px;padding:5px 11px;margin-bottom:7px;font-size:11px;gap:7px;align-items:center;}
+.sel-bar em{color:var(--green);font-style:normal;font-weight:700;}
+
+/* BUTTONS */
+.btn{border:none;border-radius:5px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;transition:opacity .15s;}
+.btn:hover{opacity:.82;}
+.btn-green{background:var(--green);color:#0f1117;}
+.btn-red{background:var(--red);color:#fff;}
+.btn-sec{background:var(--surface2);color:var(--text2);border:1px solid var(--border);}
+.btn-danger{background:#3a1010;color:var(--red);border:1px solid #6a2020;}
+.btn-mail{background:#2a1a3a;color:#c080ff;border:1px solid #5a3080;}
+
+/* CHIPS */
+.chip{display:inline-block;border-radius:3px;padding:2px 6px;font-size:9px;font-weight:700;white-space:nowrap;cursor:pointer;}
+.chip:hover{opacity:.75;}
+.c-zavady    {background:#3a1515;color:#ff8080;border:1px solid #5a2020;}
+.c-barevnost {background:#152535;color:#70b0ff;border:1px solid #203050;}
+.c-material  {background:#2a2510;color:#d4c040;border:1px solid #4a4010;}
+.c-logica    {background:#25152a;color:#c080ff;border:1px solid #40206a;}
+.c-nahledy   {background:#152a20;color:#50d090;border:1px solid #206040;}
+.c-udrzba    {background:#2a2015;color:#c09060;border:1px solid #5a3a20;}
+.c-planovani {background:#1a2a1a;color:#70d870;border:1px solid #205020;}
+.c-technologie{background:#1a2535;color:#60c8ff;border:1px solid #205080;}
+.c-pantone   {background:#2a1525;color:#ff70a0;border:1px solid #80304a;}
+.c-tiskprob  {background:#1f1a10;color:#ffaa30;border:1px solid #805010;}
+.c-ostatni   {background:var(--surface2);color:var(--text2);border:1px solid var(--border);}
+.m-xl106{border-left:4px solid var(--accent)!important;color:var(--accent)!important;font-weight:700;}
+.m-xl105{border-left:4px solid var(--orange)!important;color:var(--orange)!important;font-weight:700;}
+
+/* POPUPS */
+.popup{position:fixed;z-index:500;background:var(--surface2);border-radius:8px;padding:10px;box-shadow:0 8px 32px #000b;display:none;flex-direction:column;gap:5px;}
+.cat-popup{border:1px solid var(--accent);min-width:210px;}
+.note-popup{border:1px solid var(--border);width:330px;gap:8px;}
+.mail-popup{border:1px solid #5a3080;width:420px;gap:9px;}
+.zak-popup{border:1px solid var(--accent);width:360px;gap:8px;}
+.pop-title{font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;padding-bottom:5px;border-bottom:1px solid var(--border);margin-bottom:2px;}
+.cat-popup button{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:4px 8px;text-align:left;font-size:11px;cursor:pointer;}
+.cat-popup button:hover{background:var(--accent);color:#fff;}
+.cat-popup button.active{background:var(--border);}
+.pop-input{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px 8px;font-size:11px;font-family:inherit;width:100%;}
+.pop-input:focus{outline:none;border-color:var(--accent);}
+.pop-textarea{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:6px 8px;font-size:11px;resize:vertical;min-height:110px;font-family:inherit;width:100%;}
+.pop-textarea:focus{outline:none;border-color:var(--accent);}
+.pop-btns{display:flex;gap:6px;}
+.pop-label{font-size:10px;color:var(--text2);margin-bottom:2px;}
+.pop-ctx{font-size:10px;color:var(--text2);background:var(--surface);padding:5px 8px;border-radius:4px;border:1px solid var(--border);}
+
+/* ADMIN */
+.admin-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;margin-bottom:12px;}
+.admin-section h3{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;}
+.admin-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;}
+.admin-row:last-child{margin-bottom:0;}
+.bk-res{font-size:11px;padding:5px 9px;border-radius:5px;border:1px solid var(--border);background:var(--surface2);margin-top:6px;min-height:28px;}
+.danger-section{background:#150e0e;border:1px solid #3a1a1a;border-radius:var(--radius);padding:14px 18px;margin-bottom:12px;}
+.danger-section h3{font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+.danger-section p{font-size:11px;color:var(--text2);margin-bottom:8px;}
+</style>
+</head>
+<body>
+
+<!-- POPUPS -->
+<div class="popup cat-popup" id="cat-popup"></div>
+
+<div class="popup note-popup" id="note-popup">
+  <div class="pop-title">Poznámka</div>
+  <div id="note-ctx" class="pop-ctx" style="display:none"></div>
+  <textarea class="pop-textarea" id="note-ta" placeholder="Zadej poznámku…"></textarea>
+  <div class="pop-btns">
+    <button class="btn btn-green" onclick="saveNote()">Uložit (Ctrl+Enter)</button>
+    <button class="btn btn-sec" onclick="closeNotePopup()">Zrušit</button>
+    <button class="btn btn-danger" onclick="clearNote()" style="margin-left:auto">Smazat</button>
+  </div>
+</div>
+
+<div class="popup mail-popup" id="mail-popup">
+  <div style="display:flex;gap:0;margin-bottom:8px;border:1px solid var(--border);border-radius:5px;overflow:hidden">
+    <button id="mail-mode-ask" onclick="setMailMode('ask')" style="flex:1;padding:5px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:var(--accent);color:#fff;transition:all .15s">❓ Požádat o vyjádření</button>
+    <button id="mail-mode-info" onclick="setMailMode('info')" style="flex:1;padding:5px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:var(--surface2);color:var(--text2);transition:all .15s">📢 Informovat oddělení</button>
+  </div>
+  <div id="mail-ctx" class="pop-ctx"></div>
+  <div><div class="pop-label">Adresát</div><input class="pop-input" id="mail-to" type="email" placeholder="adresat@integraf.cz"></div>
+  <div><div class="pop-label">Kopie (volitelné)</div><input class="pop-input" id="mail-cc" type="email"></div>
+  <div><div class="pop-label">Doplňující zpráva (volitelné)</div><textarea class="pop-textarea" id="mail-body" style="min-height:55px"></textarea></div>
+  <div class="pop-btns">
+    <button class="btn btn-mail" onclick="sendMail()">✉ Otevřít v e-mailu</button>
+    <button class="btn btn-sec" onclick="closePopup('mail-popup')">Zrušit</button>
+  </div>
+</div>
+
+<div class="popup zak-popup" id="zak-popup">
+  <div class="pop-title">✏ Upravit zakázku</div>
+  <div id="zak-ctx" class="pop-ctx"></div>
+  <input class="pop-input" id="zak-input" placeholder="Číslo zakázky…" autocomplete="off">
+  <div style="font-size:10px;color:var(--text2)">Nechej prázdné pro smazání</div>
+  <div class="pop-btns">
+    <button class="btn btn-green" onclick="saveZak()">Uložit</button>
+    <button class="btn btn-sec" onclick="closePopup('zak-popup')">Zrušit</button>
+  </div>
+</div>
+
+<header>
+  <span class="logo">Integraf</span>
+  <button class="htab active" onclick="switchView('main')" id="vtab-main">📋 Přehled</button>
+  <button class="htab" onclick="switchView('admin')" id="vtab-admin">⚙ Správa</button>
+  <div class="hdr-right">
+    <div class="db-badge">DB: <strong id="db-count">0</strong> | <span id="db-range">—</span></div>
+    <button class="btn btn-sec" onclick="exportBackupAll()" style="font-size:11px;padding:3px 10px" title="Stáhnout zálohu">💾 Záloha</button>
+    <button class="btn btn-sec" onclick="document.getElementById('bk-hidden-input').click()" style="font-size:11px;padding:3px 10px;color:var(--green);border-color:var(--green)" title="Načíst zálohu ze souboru">📂 Načíst zálohu</button>
+    <div id="backup-toast"></div>
+  </div>
+</header>
+
+<div class="main">
+
+<!-- ═══ HLAVNÍ POHLED ═══ -->
+<div id="view-main">
+
+  <!-- Import -->
+  <div class="import-panel">
+    <h2>📥 Nahrát soubor (XL105 nebo XL106)</h2>
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" id="fileInput" accept=".xlsx,.xls" multiple>
+      Přetáhni soubor(y) nebo <strong style="color:var(--accent);cursor:pointer" onclick="document.getElementById('fileInput').click()">klikni pro výběr</strong>
+      <span style="font-size:10px;display:block;margin-top:3px;color:var(--text2)">Funguje i přetažení přílohy přímo z e-mailu</span>
+    </div>
+    <div class="imp-res" id="imp-res"></div>
+  </div>
+
+  <!-- Čekám na vyjádření -->
+  <div class="pending-section" id="pending-section" style="display:none">
+    <h3>⏳ Čekám na vyjádření <span class="pending-badge" id="pending-count">0</span></h3>
+    <div id="pending-list"></div>
+  </div>
+
+  <!-- Filtry -->
+  <div class="filters">
+    <label>Stroje:</label>
+    <div id="machine-toggles" style="display:flex;gap:6px"></div>
+    <label style="margin-left:6px">Kategorie:</label>
+    <select id="f-cat">
+      <option value="">Všechny</option>
+      <option value="__no_ostatni__">Všechny kromě Ostatní</option>
+      <option>Závady / opravy / servis</option>
+      <option>Barevnost / pre-press</option>
+      <option>Materiál</option>
+      <option>Náhledy</option>
+      <option>Údržba</option>
+      <option>Plánování výroby</option>
+      <option>Technologie</option>
+      <option>Pantone</option>
+      <option>Tiskové problémy</option>
+      <option>Logica</option>
+      <option>Ostatní</option>
+    </select>
+    <label>Od:</label>
+    <input type="date" id="f-from">
+    <label>Do:</label>
+    <input type="date" id="f-to">
+    <button class="qbtn" onclick="setQ('thismonth')">Tento měsíc</button>
+    <button class="qbtn" onclick="setQ('lastmonth')">Min. měsíc</button>
+    <button class="qbtn" onclick="setQ('thisyear')">Tento rok</button>
+    <button class="qbtn" onclick="setQ('lastyear')">Min. rok</button>
+    <label>Pracovník:</label>
+    <select id="f-worker"><option value="">Všichni</option></select>
+    <button class="btn btn-sec" onclick="resetFilters()">✕ Reset</button>
+    <button class="btn btn-green" style="margin-left:auto" onclick="exportXlsx()">⬇ Export XLSX</button>
+  </div>
+
+  <!-- Měsíce -->
+  <div class="month-bar" id="month-bar"></div>
+
+  <!-- Grafy -->
+  <div class="charts-row" id="charts-row">
+    <div class="chart-card"><h3 id="chart-cats-title">Záznamy dle kategorie</h3><div id="chart-cats"></div></div>
+    <div class="chart-card"><h3>Záznamy dle pracovníka</h3><div id="chart-workers"></div></div>
+  </div>
+
+  <!-- Tabulka -->
+  <div class="sel-bar" id="sel-bar">
+    Vybráno: <em id="sel-cnt">0</em> &nbsp;
+    <button class="btn btn-red" onclick="deleteSelected()">🗑 Smazat vybrané</button>
+    <button class="btn btn-sec" onclick="clearSel()">Zrušit výběr</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th class="ns chk"><input type="checkbox" id="chk-all"></th>
+        <th data-col="machine">Stroj ↕</th>
+        <th data-col="datum">Datum ↕</th>
+        <th data-col="cas">Čas / trvání ↕</th>
+        <th class="ns">Popis</th>
+        <th data-col="pracovnik">Pracovník ↕</th>
+        <th class="ns">Zakázka</th>
+        <th class="ns">Kategorie</th>
+        <th class="ns">Poznámka</th>
+        <th class="ns"></th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══ SPRÁVA ═══ -->
+<div id="view-admin" style="display:none">
+
+  <div class="admin-section">
+    <h3>📧 Nastavení notifikací — výchozí adresát dle kategorie</h3>
+    <p style="font-size:11px;color:var(--text2);margin-bottom:10px">Při kliknutí na ✉ u záznamu se předvyplní adresát podle kategorie. Pole nechej prázdné pro kategorii bez výchozího adresáta.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;margin-bottom:10px">
+      <div class="admin-row"><label style="font-size:11px;color:var(--text2);width:180px">Závady / opravy / servis</label><input class="pop-input" id="cfg-Závady / opravy / servis" placeholder="" style="width:220px"></div>
+      <div class="admin-row"><label style="font-size:11px;color:var(--text2);width:180px">Barevnost / pre-press</label><input class="pop-input" id="cfg-Barevnost / pre-press" placeholder="" style="width:220px"></div>
+      <div class="admin-row"><label style="font-size:11px;color:var(--text2);width:180px">Materiál</label><input class="pop-input" id="cfg-Materiál" placeholder="" style="width:220px"></div>
+      <div class="admin-row"><label style="font-size:11px;color:var(--text2);width:180px">Náhledy</label><input class="pop-input" id="cfg-Náhledy" placeholder="" style="width:220px"></div>
+      <div class="admin-row"><label style="font-size:11px;color:var(--text2);width:180px">Údržba</label><input class="pop-input" id="cfg-Údržba" placeholder="" style="width:220px"></div>
+      <div class="admin-row"><label style="font-size:11px;color:var(--text2);width:180px">Plánování výroby</label><input class="pop-input" id="cfg-Plánování výroby" placeholder="" style="width:220px"></div>
+      <div class="admin-row"><label style="font-size:11px;color:var(--text2);width:180px">Technologie</label><input class="pop-input" id="cfg-Technologie" placeholder="" style="width:220px"></div>
+      <div class="admin-row"><label style="font-size:11px;color:var(--text2);width:180px">Pantone</label><input class="pop-input" id="cfg-Pantone" placeholder="" style="width:220px"></div>
+      <div class="admin-row"><label style="font-size:11px;color:var(--text2);width:180px">Tiskové problémy</label><input class="pop-input" id="cfg-Tiskové problémy" placeholder="" style="width:220px"></div>
+      <div class="admin-row"><label style="font-size:11px;color:var(--text2);width:180px">Logica</label><input class="pop-input" id="cfg-Logica" placeholder="" style="width:220px"></div>
+      <div class="admin-row"><label style="font-size:11px;color:var(--text2);width:180px">Ostatní</label><input class="pop-input" id="cfg-Ostatní" placeholder="" style="width:220px"></div>
+      <div class="admin-row"><label style="font-size:11px;color:var(--text2);width:180px">Kopie vždy (všechny kategorie)</label><input class="pop-input" id="cfg-cc" placeholder="" style="width:220px"></div>
+    </div>
+    <button class="btn btn-green" onclick="saveCfg()">Uložit nastavení</button>
+    <span id="cfg-saved" style="font-size:11px;color:var(--green);margin-left:8px;display:none">✓ Uloženo</span>
+  </div>
+
+  <div class="admin-section" ondragover="event.preventDefault()" ondrop="event.preventDefault();if(event.dataTransfer.files[0])processBackupFile(event.dataTransfer.files[0])">
+    <h3>💾 Záloha databáze</h3>
+    <p style="font-size:11px;color:var(--text2);margin-bottom:10px">Záloha obsahuje data obou strojů, poznámky, kategorie a nastavení mailů.</p>
+    <div class="admin-row">
+      <button class="btn btn-green" onclick="exportBackupAll()">💾 Exportovat zálohu (JSON)</button>
+      <button class="btn btn-sec" id="bk-btn" onclick="openBackupFile()">📂 Načíst zálohu ze souboru</button>
+      <input type="file" id="bk-hidden-input" accept=".json" style="display:none">
+      <span style="font-size:11px;color:var(--text2)">nebo přetáhni JSON soubor sem</span>
+    </div>
+    <div class="bk-res" id="bk-res"></div>
+  </div>
+
+  <div class="admin-section">
+    <h3>🔗 Doplnit zakázky z kontextu</h3>
+    <p style="font-size:11px;color:var(--text2);margin-bottom:8px">Spouští se automaticky při každém importu a spuštění.</p>
+    <button class="btn btn-sec" onclick="runManualInference()">▶ Spustit doplnění</button>
+    <span id="infer-result" style="font-size:11px;color:var(--green);margin-left:8px;display:none"></span>
+  </div>
+
+  <div class="danger-section">
+    <h3>⚠ Smazat databázi</h3>
+    <p>Nenávratně smaže všechny záznamy zvoleného stroje.</p>
+    <div class="admin-row">
+      <button class="btn btn-danger" onclick="clearDB('XL106')">🗑 Smazat XL106</button>
+      <button class="btn btn-danger" onclick="clearDB('XL105')">🗑 Smazat XL105</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+<script>window.BOBR_APP="stroje";window.BOBR_KEYS=["xl"];window.BOBR_RESTORE_HIDE=['button[onclick*="bk-hidden-input"]','#bk-btn'];</script>
+<script src="storage-sync.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════
+// KATEGORIE
+// ═══════════════════════════════════════════════════════
+const ALL_CATS=[
+  {name:'Logica',cls:'c-logica',kw:['logice','logica','logika','logiku','v logice naklad']},
+  {name:'Náhledy',cls:'c-nahledy',kw:['náhled','nahled','nátisk','natisk','cekani na zakaznika',
+    'čekání na zákazníka','zakaznik u tisku','nahled u tisku','nahled schvaleni','nahled cekani']},
+  {name:'Údržba',cls:'c-udrzba',kw:['údržba','udrzba','viz. sešit','viz sešit','viz kniha',
+    'doplnění spotřebáků','doplneni spotrebaku','úklid','uklid','mazani','mazání',
+    'příprava stroje','priprava stroje','cisteni,']},
+  {name:'Technologie',cls:'c-technologie',kw:['technolog','tisk led','led tisk','iml tisk',
+    'tisk iml','nastaveni technolog','konzultace technolog','zkouska technolog']},
+  {name:'Závady / opravy / servis',cls:'c-zavady',kw:['problém','problem','nejde ','závad',
+    'oprava','opravy','restart','nejede','neměřila','nemeje','zaseklá','zasekla','únik oleje',
+    'reseni valcu','archy zastavují','archy zastavuji','plácá','placa','oteru','otěru',
+    'reseni oteru','vtažený','vtazeny','vtažena','vtazena','vtažená','vtažená látka',
+    'kontrola kompresoru','chlupy z hadry','heidelberg','sejkora','lédl','ledl',
+    'update stroje','oprava hd','nedorovnává','reseni obracaku','reseni obracak',
+    'při opravě','pri oprave','natáčení videa','popis závad','výměna pístků',
+    'výměna harmonik','výměna vod. naval','odmaštění','kontrola mytí protitlaků',
+    'přenastavení brzd','custar, brzdy','reseni laku','reseni zatekani',
+    'uv lampa nejde','nesuší','rozsekaná guma','přenos tisku na gumu',
+    'mokré fleky','mokre fleky','prouhy na gumě','není nátisk']},
+  {name:'Pantone',cls:'c-pantone',kw:[
+    'dosla barva','došla barva','neni barva','není barva',
+    'dosla pan','došla pan','neni pan','není pan',
+    'dosla pantone','došla pantone','neni pantone','není pantone',
+    'hledani pantone','hledání pantone','hledani barvy','hledání barvy',
+    'reseni pantone','řešení pantone','nedostatek pantone','nedostatek barvy',
+    'dosla pantonka','došla pantonka','problem s pantonkou','problém s pantonkou',
+    'skraloup','škraloup','barva jako kamen','barva jako kámen',
+    'plechovka k nepouziti','plechovka k nepoužití',
+    'hledani jine barvy','hledání jiné barvy',
+  ]},
+  {name:'Tiskové problémy',cls:'c-tiskprob',kw:[
+    'časté mytí','caste myti','ruční mytí gumy','rucni myti gumy',
+    'otírání gumy','otirani gumy','otření gumy','otreni gumy',
+    'otírání gum','otirani gum','otření gum','otreni gum',
+    'špiní se','spini se','špiní pantone','spini pantone',
+    'prouhy na','prouhy v tisku',
+    'pecky v tisku','pecky pri tisku',
+    'statický papír','staticky papir','strasne statick',
+    'trhá papír','trha papir','vytrhává papír','vytrhava papir',
+    'nejdou vyndavat archy','nejde vyndavat',
+    'rastr. válec','rastrovy valec','zajebanej rastr','zajeban rastr',
+    'zelena plocha','zelená plocha',
+    'narocny tisk','náročný tisk',
+    'ředění barvy','redeni barvy',
+    'bordel z papíru','bordel z papiru',
+    'caste zastavovani','časté zastavování',
+    'bordel na gumě','bordel na gume',
+    'bordel z hader','pecičky','pecicky nalepene',
+    'vlnitý papír','vlnity papir',
+  ]},
+  {name:'Barevnost / pre-press',cls:'c-barevnost',kw:['barevnost','barevnosti',
+    'problém s měřením','neměřila pantone','neodpovídá barevnost','reseni bar vzoru',
+    'hledani podkladu','nejde dobarvit','nejsem schopen se dostat barevně',
+    'reseni prepress','reseni barevnosti','dodani bar vzoru','neni nasviceno',
+    'hledani vzorku','reseni desek na','přemytí, neodpovídá']},
+  {name:'Plánování výroby',cls:'c-planovani',kw:['reseni zakazek','řešení zakázek',
+    'nebylo připraveno','nebyl pripraven','změny v plánu','zmeny v planu',
+    'není připraveno','neni pripraveno','chybí data','co bude',
+    'na co je materiál nebo data','reseni co je','pristaveni','přistavení','v logice naklad']},
+  {name:'Materiál',cls:'c-material',kw:['dojezd konce role tragédie','nabořená role',
+    'hodně makulí','hodne makuli','obtížný rozjezd','zbytková role nejede',
+    'rozjezd stroje na starou roli','vazelina v materialu','vada materialu','prouhuje',
+    'vysoké kupy','odhazování papíru','zmena materialu','změna materiálu',
+    'prechod na papir','přechod na papír','prechod z iml','přechod z iml',
+    'pentaprint','jiný materiál','není sáček','eup50','eth57']},
+];
+const CAT_OSTATNI={name:'Ostatní',cls:'c-ostatni'};
+const CAT_COLORS={
+  'Závady / opravy / servis':'#ff8080','Barevnost / pre-press':'#70b0ff',
+  'Materiál':'#d4c040','Logica':'#c080ff','Náhledy':'#50d090',
+  'Údržba':'#c09060','Plánování výroby':'#70d870','Pantone':'#ff70a0','Tiskové problémy':'#ffaa30','Technologie':'#60c8ff',
+};
+function getMailKey(catName){return catName;} // key = category name directly
+function getCat(p){const d=p.toLowerCase();for(const c of ALL_CATS)if(c.kw.some(k=>d.includes(k)))return c.name;return'Ostatní';}
+function catObj(n){return ALL_CATS.find(c=>c.name===n)||CAT_OSTATNI;}
+
+// ═══════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════
+function extractRange(s){
+  // "08:04-08:48 (0:43)" → "08:04–08:48"
+  const m=s.match(/^(\d+:\d+)\s*[-–]\s*(\d+:\d+)/);
+  return m?m[1]+'–'+m[2]:'';
+}
+
+function parseDur(s){const m=s.match(/\((\d+):(\d+)\)/);return m?+m[1]*60+ +m[2]:0;}
+function parseDurB(s){const m=s.match(/^(\d+):(\d+)/);return m?+m[1]*60+ +m[2]:0;}
+function fmtTime(r){
+  // Returns display string for the time column
+  if(r.casRange)return r.casRange+'<br><span style="color:var(--text2);font-size:9px">('+fmtDur(r.trvani_min)+')</span>';
+  if(r.cas)return r.cas+'<br><span style="color:var(--text2);font-size:9px">('+fmtDur(r.trvani_min)+')</span>';
+  return fmtDur(r.trvani_min)||'—';
+}
+
+function fmtDur(m){if(!m)return'';const h=Math.floor(m/60),r=m%60;return h?`${h}h ${String(r).padStart(2,'0')}m`:`${r}m`;}
+function startTime(s){const m=s.match(/^(\d+:\d+)/);return m?m[1]:'';}
+function excelDate(v){
+  if(!v)return'';
+  if(typeof v==='string'){const p=v.slice(0,10).split('-');return p.length===3?p[2]+'.'+p[1]+'.'+p[0]:v;}
+  if(typeof v==='number'){const d=new Date(Math.round((v-25569)*86400*1000));return String(d.getUTCDate()).padStart(2,'0')+'.'+String(d.getUTCMonth()+1).padStart(2,'0')+'.'+d.getUTCFullYear();}
+  return'';
+}
+function dateISO(s){if(!s)return'';const p=s.split('.');return`${p[2]||''}-${(p[1]||'').padStart(2,'0')}-${(p[0]||'').padStart(2,'0')}`;}
+function dateKey(s){const p=s.split('.');return(p[2]||'')+(p[1]||'')+(p[0]||'');}
+function monthKey(d){const p=d.split('.');return`${p[2]||'????'}-${(p[1]||'??').padStart(2,'0')}`;}
+function monthLabel(mk){const p=mk.split('-');const n=['','Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];return`${n[+p[1]]||p[1]} ${p[0]}`;}
+function curMonthKey(){const n=new Date();return`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+const MACHINES=['XL106','XL105'];
+let activeView='main';
+let activeMonth='all'; // 'all' or 'yyyy-mm'
+let activeMachines=new Set(['XL106','XL105']);
+let sortCol='datum', sortDir=-1; // -1 = descending (newest first)
+let selected=new Set();
+let noteKey=null, noteMachine=null, zakKey=null, mailKey=null, mailMachine=null, mailMode='ask';
+
+// ═══════════════════════════════════════════════════════
+// DB
+// ═══════════════════════════════════════════════════════
+function storeKey(m){return`xl_db_v2_${m}`;}
+function loadDB(m){try{const r=localStorage.getItem(storeKey(m));return r?new Map(JSON.parse(r)):new Map();}catch(e){return new Map();}}
+function saveDB(m,db){localStorage.setItem(storeKey(m),JSON.stringify([...db]));}
+
+function getAllData(){
+  const all=[];
+  MACHINES.forEach(m=>{
+    if(!activeMachines.has(m))return;
+    const db=loadDB(m);
+    [...db.values()].filter(r=>!r.deleted).forEach(r=>all.push({...r,_machine:m}));
+  });
+  return all;
+}
+
+function updateBadge(){
+  let total=0;const mks=[];
+  MACHINES.forEach(m=>{
+    const db=loadDB(m);
+    const all=[...db.values()].filter(r=>!r.deleted);
+    total+=all.length;
+    all.forEach(r=>{const mk=monthKey(r.datum);if(!mks.includes(mk))mks.push(mk);});
+  });
+  document.getElementById('db-count').textContent=total;
+  mks.sort();
+  document.getElementById('db-range').textContent=mks.length?`${monthLabel(mks[0])}–${monthLabel(mks[mks.length-1])}`:'—';
+}
+
+// ═══════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════
+function loadCfg(){try{return JSON.parse(localStorage.getItem('xl_cfg_v1')||'{}');}catch(e){return{};}}
+const ALL_CAT_NAMES=['Závady / opravy / servis','Barevnost / pre-press','Materiál',
+  'Náhledy','Údržba','Plánování výroby','Technologie','Pantone','Tiskové problémy','Logica','Ostatní'];
+
+function saveCfg(){
+  const cfg={cc:document.getElementById('cfg-cc').value.trim()};
+  ALL_CAT_NAMES.forEach(name=>{
+    const el=document.getElementById('cfg-'+name);
+    if(el)cfg[name]=el.value.trim();
+  });
+  localStorage.setItem('xl_cfg_v1',JSON.stringify(cfg));
+  const s=document.getElementById('cfg-saved');s.style.display='inline';setTimeout(()=>s.style.display='none',2000);
+}
+function applyCfg(){
+  const cfg=loadCfg();
+  const cc=document.getElementById('cfg-cc');if(cc)cc.value=cfg.cc||'';
+  ALL_CAT_NAMES.forEach(name=>{
+    const el=document.getElementById('cfg-'+name);
+    if(el)el.value=cfg[name]||'';
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// VIEW SWITCHING
+// ═══════════════════════════════════════════════════════
+function switchView(v){
+  activeView=v;
+  ['main','admin'].forEach(id=>{
+    document.getElementById('view-'+id).style.display=id===v?'':'none';
+    document.getElementById('vtab-'+id).classList.toggle('active',id===v);
+  });
+  if(v==='main'){buildMachineToggles();buildMonthBtns();renderAll();}
+  else if(v==='admin')applyCfg();
+}
+
+// ═══════════════════════════════════════════════════════
+// MACHINE TOGGLES
+// ═══════════════════════════════════════════════════════
+function buildMachineToggles(){
+  const el=document.getElementById('machine-toggles');el.innerHTML='';
+  MACHINES.forEach(m=>{
+    const b=document.createElement('button');
+    b.className='toggle-btn'+(activeMachines.has(m)?' on':'');
+    b.textContent=m;
+    b.onclick=()=>{
+      activeMachines.has(m)?activeMachines.delete(m):activeMachines.add(m);
+      b.classList.toggle('on',activeMachines.has(m));
+      renderAll();
+    };
+    el.appendChild(b);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// MONTH BUTTONS
+// ═══════════════════════════════════════════════════════
+function buildMonthBtns(){
+  const all=getAllData();
+  const mks=[...new Set(all.map(r=>monthKey(r.datum)))].sort().reverse();
+  if(activeMonth!=='all'&&!mks.includes(activeMonth))activeMonth='all';
+
+  const bar=document.getElementById('month-bar');bar.innerHTML='';
+  // "Vše" button
+  const bAll=document.createElement('button');
+  bAll.className='mbtn'+(activeMonth==='all'?' active':'');
+  bAll.textContent='Vše';
+  bAll.onclick=()=>{activeMonth='all';sortDir=-1;buildMonthBtns();renderAll();};
+  bar.appendChild(bAll);
+  // Month buttons
+  mks.forEach(mk=>{
+    const b=document.createElement('button');
+    b.className='mbtn'+(mk===activeMonth?' active':'');
+    b.textContent=monthLabel(mk);
+    b.onclick=()=>{activeMonth=mk;sortDir=1;buildMonthBtns();renderAll();};
+    bar.appendChild(b);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// QUICK DATE RANGES
+// ═══════════════════════════════════════════════════════
+function setQ(range){
+  const now=new Date();const y=now.getFullYear();const m=now.getMonth();
+  let from,to;
+  if(range==='thismonth'){from=`${y}-${String(m+1).padStart(2,'0')}-01`;to=`${y}-${String(m+1).padStart(2,'0')}-${String(new Date(y,m+1,0).getDate()).padStart(2,'0')}`;}
+  else if(range==='lastmonth'){const lm=m===0?12:m;const ly=m===0?y-1:y;from=`${ly}-${String(lm).padStart(2,'0')}-01`;to=`${ly}-${String(lm).padStart(2,'0')}-${String(new Date(ly,lm,0).getDate()).padStart(2,'0')}`;}
+  else if(range==='thisyear'){from=`${y}-01-01`;to=`${y}-12-31`;}
+  else if(range==='lastyear'){from=`${y-1}-01-01`;to=`${y-1}-12-31`;}
+  document.getElementById('f-from').value=from;
+  document.getElementById('f-to').value=to;
+  activeMonth='all';buildMonthBtns();renderAll();
+}
+function resetFilters(){
+  document.getElementById('f-cat').value='';
+  document.getElementById('f-from').value='';
+  document.getElementById('f-to').value='';
+  const fw=document.getElementById('f-worker');if(fw)fw.value='';
+  activeMonth='all';sortDir=-1;
+  buildMonthBtns();renderAll();
+}
+
+// ═══════════════════════════════════════════════════════
+// FILTERED DATA
+// ═══════════════════════════════════════════════════════
+function effCatName(r){return r.catOverride||r.catAuto;}
+
+function getFiltered(){
+  const cat=document.getElementById('f-cat').value;
+  const from=document.getElementById('f-from').value;
+  const to=document.getElementById('f-to').value;
+  const worker=document.getElementById('f-worker')?document.getElementById('f-worker').value:'';
+  let data=getAllData();
+  if(activeMonth!=='all')data=data.filter(r=>monthKey(r.datum)===activeMonth);
+  if(from||to)data=data.filter(r=>{const iso=dateISO(r.datum);if(from&&iso<from)return false;if(to&&iso>to)return false;return true;});
+  if(cat==='__no_ostatni__')data=data.filter(r=>effCatName(r)!=='Ostatní');
+  else if(cat)data=data.filter(r=>effCatName(r)===cat);
+  if(worker)data=data.filter(r=>r.pracovnik===worker);
+  return data;
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER ALL
+// ═══════════════════════════════════════════════════════
+function renderAll(){
+  updateWorkerSelect();
+  renderCharts();
+  renderTable();
+  renderPending();
+}
+
+function updateWorkerSelect(){
+  const sel=document.getElementById('f-worker');
+  if(!sel)return;
+  const cur=sel.value;
+  const all=getAllData();
+  const workers=[...new Set(all.map(r=>r.pracovnik))].sort();
+  sel.innerHTML='<option value="">Všichni</option>';
+  workers.forEach(w=>{const o=document.createElement('option');o.value=w;o.textContent=w;sel.appendChild(o);});
+  if(workers.includes(cur))sel.value=cur;
+}
+
+// ═══════════════════════════════════════════════════════
+// CHARTS
+// ═══════════════════════════════════════════════════════
+function barChart(data,colorFn){
+  if(!data.length)return'<div style="color:var(--text2);font-size:11px;padding:8px 0">Žádná data</div>';
+  const max=data[0][1]||1;
+  return data.map(([name,val])=>`
+    <div class="bar-row">
+      <div class="bar-label">${esc(name)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${val/max*100}%;background:${colorFn(name)}"></div></div>
+      <div class="bar-val">${val} záz.</div>
+    </div>`).join('');
+}
+
+function renderCharts(){
+  const data=getFiltered();
+  // cats — exclude Ostatní
+  const catCnt={};
+  data.forEach(r=>{const c=effCatName(r);if(c!=='Ostatní')catCnt[c]=(catCnt[c]||0)+1;});
+  document.getElementById('chart-cats').innerHTML=barChart(Object.entries(catCnt).sort((a,b)=>b[1]-a[1]),n=>CAT_COLORS[n]||'#4f7cff');
+  // workers — exclude Ostatní (same as category chart)
+  const wCnt={};data.filter(r=>effCatName(r)!=='Ostatní').forEach(r=>{wCnt[r.pracovnik]=(wCnt[r.pracovnik]||0)+1;});
+  document.getElementById('chart-workers').innerHTML=barChart(Object.entries(wCnt).sort((a,b)=>b[1]-a[1]),()=>'var(--accent)');
+}
+
+// ═══════════════════════════════════════════════════════
+// TABLE
+// ═══════════════════════════════════════════════════════
+function renderTable(){
+  const data=getFiltered();
+  // Sort
+  data.sort((a,b)=>{
+    let av=a[sortCol],bv=b[sortCol];
+    if(sortCol==='datum'){av=dateKey(a.datum)+(a.cas||'');bv=dateKey(b.datum)+(b.cas||'');}
+    if(typeof av==='number')return(av-bv)*sortDir;
+    return String(av||'').localeCompare(String(bv||''))*sortDir;
+  });
+
+  const tbody=document.getElementById('tbody');tbody.innerHTML='';
+  if(!data.length){tbody.innerHTML='<tr><td colspan="11" style="padding:36px;text-align:center;color:var(--text2)">Žádné záznamy.</td></tr>';return;}
+
+  // Group by date when showing single month (ascending) — add date headers
+  const showDateHeaders=(activeMonth!=='all'&&sortCol==='datum');
+  let prevDate=null;
+
+  data.forEach(r=>{
+    const cat=catObj(effCatName(r));
+    const mins=r.trvani_min;
+    const tc=mins>=60?'long':mins>=20?'med':'sht';
+    const badge=r.mergedCount>1?`<span class="mbadge">×${r.mergedCount}</span>`:'';
+    const chip=`<span class="chip ${cat.cls}" onclick="openCatMenu(event,'${esc(r._key)}','${r._machine}')" title="Změnit kategorii">${esc(cat.name)}</span>`;
+    const k=esc(r._key);const m=esc(r._machine);
+    const hasNote=!!r.note;
+    const pending=r.pending?`<span style="color:#c080ff;font-size:10px" title="Čekám na vyjádření">⏳</span>`:'';
+
+    if(showDateHeaders&&r.datum!==prevDate){
+      const dtr=document.createElement('tr');dtr.className='date-hdr';
+      dtr.innerHTML=`<td colspan="10">📅 ${r.datum}</td>`;
+      tbody.appendChild(dtr);prevDate=r.datum;
+    }
+
+    let zakHtml=esc(r.zakazka||'');
+    if(r.zakazka&&r.zakManual)zakHtml+=` <span class="zak-warn" style="color:var(--green)">(ručně)</span>`;
+    else if(r.zakazka&&r.zakInferred)zakHtml+=` <span class="zak-warn">(z kontextu)</span>`;
+    else if(r.zakazka&&r.zakFallback)zakHtml+=` <span class="zak-warn">(doplněno)</span>`;
+
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td class="chk"><input type="checkbox" class="rchk" data-key="${k}" data-machine="${m}" ${selected.has(r._key)?'checked':''}></td>
+      <td class="${r._machine==='XL106'?'m-xl106':'m-xl105'}" style="white-space:nowrap;font-size:10px;padding-left:8px">${esc(r._machine)}</td>
+      <td class="datum">${esc(r.datum)}</td>
+      <td class="cas" style="white-space:nowrap;line-height:1.4">${fmtTime(r)}</td>
+      <td class="popis">${esc(r.popis)}${badge}</td>
+      <td class="prac">${esc(r.pracovnik)}</td>
+      <td class="zak">${zakHtml} <button class="abt" onclick="openZakPopup(event,'${k}','${m}')" title="Upravit zakázku" style="opacity:.35;font-size:10px">✏</button></td>
+      <td>${chip}</td>
+      <td class="note-cell ${hasNote?'has-note':''}">${hasNote?esc(r.note):'—'}</td>
+      <td style="white-space:nowrap">
+        ${pending}
+        ${r.mailSent?`<span class="${r.pending?'sent-badge':'sent-info'}" title="${r.pending?'Čekám na vyjádření':'Mail odeslán (info)'}"></span>`:''}
+        <button class="abt note-btn ${hasNote?'has-note':''}" onclick="openNotePopup(event,'${k}','${m}')" title="Poznámka">📝</button>
+        <button class="abt mail-btn" onclick="openMailPopup(event,'${k}','${m}')" title="Požádat o vyjádření">✉</button>
+        <button class="abt" onclick="delOne('${k}','${m}')" title="Smazat">✕</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll('.rchk').forEach(cb=>{
+    cb.addEventListener('change',()=>{cb.checked?selected.add(cb.dataset.key):selected.delete(cb.dataset.key);updateSelBar();});
+  });
+}
+
+// Sort on header click
+document.querySelectorAll('thead th[data-col]').forEach(th=>{
+  th.addEventListener('click',()=>{
+    const col=th.dataset.col;
+    if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=-1;}
+    document.querySelectorAll('thead th').forEach(t=>t.classList.remove('sorted'));
+    th.classList.add('sorted');
+    renderTable();
+  });
+});
+document.getElementById('chk-all').addEventListener('change',function(){
+  getFiltered().forEach(r=>this.checked?selected.add(r._key):selected.delete(r._key));
+  updateSelBar();renderTable();
+});
+['f-cat','f-from','f-to','f-worker'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('change',()=>{buildMonthBtns();renderAll();});});
+
+function updateSelBar(){
+  const b=document.getElementById('sel-bar');
+  document.getElementById('sel-cnt').textContent=selected.size;
+  b.style.display=selected.size>0?'flex':'none';
+}
+
+// ═══════════════════════════════════════════════════════
+// PENDING
+// ═══════════════════════════════════════════════════════
+function renderPending(){
+  const pending=[];
+  MACHINES.forEach(m=>{
+    const db=loadDB(m);
+    [...db.values()].filter(r=>r.pending&&!r.deleted).forEach(r=>pending.push({...r,_machine:m}));
+  });
+  pending.sort((a,b)=>(a.pendingSentAt||'').localeCompare(b.pendingSentAt||''));
+  const sec=document.getElementById('pending-section');
+  document.getElementById('pending-count').textContent=pending.length;
+  sec.style.display=pending.length>0?'block':'none';
+  if(!pending.length){document.getElementById('pending-list').innerHTML='';return;}
+  document.getElementById('pending-list').innerHTML=pending.map(r=>{
+    const k=esc(r._key),m=esc(r._machine);
+    const age=Math.floor((Date.now()-new Date(r.pendingSentAt||Date.now()).getTime())/86400000);
+    const ageStr=age===0?'dnes':age===1?'včera':`před ${age} dny`;
+    return`<div class="pending-row">
+      <div class="pending-meta"><strong>${esc(r._machine)}</strong><br>${esc(r.datum)}<br><span style="color:var(--yellow);font-size:9px">${ageStr}</span></div>
+      <div class="pending-popis"><strong>${esc(r.popis)}</strong>${r.zakazka?`<br><span style="color:var(--text2);font-size:10px">${esc(r.zakazka)}</span>`:''}${r.note?`<br><span style="color:var(--yellow);font-size:10px">📝 ${esc(r.note)}</span>`:''}</div>
+      <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
+        <span class="chip ${catObj(effCatName(r)).cls}">${esc(effCatName(r))}</span>
+        <button class="btn btn-sec" style="font-size:10px;padding:3px 7px" onclick="event.stopPropagation();openNotePopup(event,'${k}','${m}')" title="Přidat vyjádření">📝 Vyjádření</button>
+        <button class="abt" onclick="event.stopPropagation();clearPending('${k}','${m}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function clearPending(key,machine){
+  const db=loadDB(machine);const rec=db.get(key);
+  if(rec){rec.pending=false;saveDB(machine,db);}
+  renderPending();renderTable();
+}
+
+// ═══════════════════════════════════════════════════════
+// DELETE
+// ═══════════════════════════════════════════════════════
+function delOne(key,machine){
+  const db=loadDB(machine);const r=db.get(key);
+  if(r){r.deleted=true;saveDB(machine,db);selected.delete(key);}
+  updateBadge();updateSelBar();buildMonthBtns();renderAll();
+}
+function deleteSelected(){
+  selected.forEach(key=>{
+    MACHINES.forEach(m=>{const db=loadDB(m);const r=db.get(key);if(r){r.deleted=true;saveDB(m,db);}});
+  });
+  selected.clear();updateBadge();updateSelBar();buildMonthBtns();renderAll();
+}
+function clearSel(){selected.clear();updateSelBar();renderTable();}
+
+// ═══════════════════════════════════════════════════════
+// CATEGORY POPUP
+// ═══════════════════════════════════════════════════════
+const catPopup=document.getElementById('cat-popup');
+let catKey_=null,catMachine_=null;
+function openCatMenu(e,key,machine){
+  e.stopPropagation();catKey_=key;catMachine_=machine;
+  const db=loadDB(machine);const rec=db.get(key);const cur=effCatName(rec);
+  catPopup.innerHTML='<div class="pop-title">Změnit kategorii</div>';
+  [...ALL_CATS.map(c=>c.name),'Ostatní'].forEach(name=>{
+    const co=catObj(name);const btn=document.createElement('button');
+    btn.innerHTML=`<span class="chip ${co.cls}" style="pointer-events:none">${name}</span>`;
+    if(name===cur)btn.classList.add('active');
+    btn.onclick=()=>{rec.catOverride=name;saveDB(machine,db);closeCatPopup();renderAll();};
+    catPopup.appendChild(btn);
+  });
+  const rst=document.createElement('button');
+  rst.textContent=`↩ Auto (${rec.catAuto})`;rst.style.color='var(--text2)';
+  rst.onclick=()=>{rec.catOverride=null;saveDB(machine,db);closeCatPopup();renderAll();};
+  catPopup.appendChild(rst);
+  posPopup(catPopup,e.target,220);catPopup.style.display='flex';
+}
+function closeCatPopup(){catPopup.style.display='none';catKey_=null;catMachine_=null;}
+
+// ═══════════════════════════════════════════════════════
+// NOTE POPUP
+// ═══════════════════════════════════════════════════════
+const notePopup=document.getElementById('note-popup');
+function openNotePopup(e,key,machine){
+  e.stopPropagation();noteKey=key;noteMachine=machine;
+  const db=loadDB(machine);const rec=db.get(key);
+  document.getElementById('note-ta').value=rec?.note||'';
+  const ctx=document.getElementById('note-ctx');
+  ctx.innerHTML=`<strong>${esc(machine)}</strong> | ${esc(rec?.datum||'')} | ${esc(rec?.popis||'')}`;
+  ctx.style.display='block';
+  posPopup(notePopup,e.target,330,260);notePopup.style.display='flex';
+  setTimeout(()=>document.getElementById('note-ta').focus(),50);
+}
+function saveNote(){
+  if(!noteKey)return;
+  const db=loadDB(noteMachine);const rec=db.get(noteKey);
+  if(!rec)return;
+  rec.note=document.getElementById('note-ta').value.trim();
+  if(rec.note&&rec.pending){rec.pending=false;rec.pendingResolvedAt=new Date().toISOString();}
+  saveDB(noteMachine,db);closeNotePopup();renderAll();
+}
+function clearNote(){
+  if(!noteKey)return;
+  const db=loadDB(noteMachine);const rec=db.get(noteKey);
+  if(rec)rec.note='';saveDB(noteMachine,db);closeNotePopup();renderAll();
+}
+function closeNotePopup(){
+  notePopup.style.display='none';notePopup.style.transform='';
+  noteKey=null;noteMachine=null;
+  document.getElementById('note-ctx').style.display='none';
+}
+document.getElementById('note-ta').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.ctrlKey)saveNote();});
+
+// ═══════════════════════════════════════════════════════
+// MAIL POPUP
+// ═══════════════════════════════════════════════════════
+const mailPopup=document.getElementById('mail-popup');
+function setMailMode(mode){
+  mailMode=mode;
+  const askBtn=document.getElementById('mail-mode-ask');
+  const infoBtn=document.getElementById('mail-mode-info');
+  if(mode==='ask'){
+    askBtn.style.background='var(--accent)';askBtn.style.color='#fff';
+    infoBtn.style.background='var(--surface2)';infoBtn.style.color='var(--text2)';
+    document.querySelector('.mail-popup .pop-title')&&(document.querySelector('.mail-popup .pop-title').textContent='');
+    document.getElementById('mail-body').placeholder='Prosím o vyjádření k výše uvedenému záznamu.';
+  } else {
+    infoBtn.style.background='var(--accent)';infoBtn.style.color='#fff';
+    askBtn.style.background='var(--surface2)';askBtn.style.color='var(--text2)';
+    document.getElementById('mail-body').placeholder='Zasílám informaci o výše uvedeném záznamu. Odpověď není vyžadována.';
+  }
+}
+
+function openMailPopup(e,key,machine){
+  e.stopPropagation();mailKey=key;mailMachine=machine;
+  const db=loadDB(machine);const rec=db.get(key);
+  const cfg=loadCfg();const catName=effCatName(rec);
+  document.getElementById('mail-to').value=cfg[catName]||'';
+  document.getElementById('mail-cc').value=cfg.cc||'';
+  document.getElementById('mail-body').value='';
+  document.getElementById('mail-ctx').innerHTML=
+    `<strong>${esc(machine)}</strong> | ${esc(rec.datum)}${rec.cas?' | '+esc(rec.cas):''} | ${fmtDur(rec.trvani_min)}<br><em>${esc(rec.popis)}</em>${rec.zakazka?`<br>Zakázka: ${esc(rec.zakazka)}`:''}`;
+  setMailMode('ask');
+  posPopup(mailPopup,e.target,420,300);mailPopup.style.display='flex';
+}
+function sendMail(){
+  if(!mailKey)return;
+  const db=loadDB(mailMachine);const rec=db.get(mailKey);
+  const to=document.getElementById('mail-to').value.trim();
+  const cc=document.getElementById('mail-cc').value.trim();
+  const extra=document.getElementById('mail-body').value.trim();
+  const isAsk=mailMode==='ask';
+  const subjPrefix=isAsk?'Vyjádření k prostoji':'Informace o prostoji';
+  const subj=encodeURIComponent(`${subjPrefix} — ${mailMachine} ${rec.datum} | ${rec.popis.slice(0,60)}`);
+  const intro=isAsk
+    ?`Dobrý den,
+
+žádám o vyjádření k následujícímu záznamu:
+
+`
+    :`Dobrý den,
+
+zaslám Vám informaci o následujícím záznamu:
+
+`;
+  const outro=isAsk
+    ?`
+
+Děkuji,
+Lukáš`
+    :`
+
+Tato zpráva je pouze informativní, odpověď není vyžadována.
+
+S pozdravem,
+Lukáš`;
+  const body=encodeURIComponent(
+    intro+
+    `Stroj: ${mailMachine}
+Datum: ${rec.datum}${rec.cas?' | '+rec.cas:''}
+Trvání: ${fmtDur(rec.trvani_min)}
+Popis: ${rec.popis}`+
+    (rec.zakazka?`
+Zakázka: ${rec.zakazka}`:'')+
+    (rec.note?`
+Poznámka: ${rec.note}`:'')+
+    `
+Kategorie: ${effCatName(rec)}`+
+    (extra?`
+
+${extra}`:'')+
+    outro
+  );
+  let mailto=`mailto:${to}?subject=${subj}&body=${body}`;
+  if(cc)mailto+=`&cc=${encodeURIComponent(cc)}`;
+  window.location.href=mailto;
+  // Mark as sent + pending if asking for response
+  rec.mailSent=true;rec.mailSentAt=new Date().toISOString();rec.mailMode=mailMode;
+  if(isAsk){rec.pending=true;rec.pendingSentAt=new Date().toISOString();}
+  saveDB(mailMachine,db);
+  closePopup('mail-popup');renderAll();
+}
+
+// ═══════════════════════════════════════════════════════
+// ZAKÁZKA POPUP
+// ═══════════════════════════════════════════════════════
+const zakPopup=document.getElementById('zak-popup');
+function openZakPopup(e,key,machine){
+  e.stopPropagation();zakKey=key;
+  const db=loadDB(machine);const rec=db.get(key);
+  document.getElementById('zak-input').value=rec?.zakazka||'';
+  document.getElementById('zak-ctx').innerHTML=`${esc(rec?.datum||'')} | <em>${esc(rec?.popis||'')}</em>`;
+  posPopup(zakPopup,e.target,360,150);zakPopup.style.display='flex';
+  setTimeout(()=>document.getElementById('zak-input').focus(),50);
+}
+function saveZak(){
+  if(!zakKey)return;
+  // find which machine
+  for(const m of MACHINES){
+    const db=loadDB(m);const rec=db.get(zakKey);
+    if(rec){
+      rec.zakazka=document.getElementById('zak-input').value.trim();
+      rec.zakManual=!!rec.zakazka;rec.zakInferred=false;rec.zakFallback=false;
+      saveDB(m,db);break;
+    }
+  }
+  closePopup('zak-popup');renderTable();
+}
+document.getElementById('zak-input').addEventListener('keydown',e=>{if(e.key==='Enter')saveZak();if(e.key==='Escape')closePopup('zak-popup');});
+
+// ═══════════════════════════════════════════════════════
+// POPUP UTILS
+// ═══════════════════════════════════════════════════════
+function posPopup(el,target,w,h){
+  el.style.visibility='hidden';el.style.display='flex';
+  const r=target.getBoundingClientRect();
+  const ph=el.offsetHeight||h||240;const pw=el.offsetWidth||w||300;
+  let top=r.bottom+6;if(top+ph>window.innerHeight-8)top=Math.max(4,r.top-ph-6);
+  let left=r.left;if(left+pw>window.innerWidth-8)left=Math.max(4,window.innerWidth-pw-8);
+  el.style.top=top+'px';el.style.left=left+'px';el.style.visibility='';
+  el.style.display='none';
+}
+function closePopup(id){
+  const el=document.getElementById(id);if(el)el.style.display='none';
+  if(id==='note-popup')closeNotePopup();
+  if(id==='cat-popup')closeCatPopup();
+  if(id==='zak-popup'){zakKey=null;}
+  if(id==='mail-popup'){mailKey=null;mailMachine=null;}
+}
+document.addEventListener('click',e=>{
+  if(!catPopup.contains(e.target))closeCatPopup();
+  if(!notePopup.contains(e.target)&&notePopup.style.display==='flex')closeNotePopup();
+  if(!mailPopup.contains(e.target))closePopup('mail-popup');
+  if(!zakPopup.contains(e.target))closePopup('zak-popup');
+});
+
+// ═══════════════════════════════════════════════════════
+// FILE IMPORT — supports drag from email attachments
+// ═══════════════════════════════════════════════════════
+const dz=document.getElementById('drop-zone');
+const fi=document.getElementById('fileInput');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+dz.addEventListener('drop',e=>{
+  e.preventDefault();dz.classList.remove('drag');
+  // Try files first
+  const files=[...e.dataTransfer.files];
+  if(files.length){files.forEach(loadFile);return;}
+  // Fallback: items API (Outlook, some email clients)
+  if(e.dataTransfer.items){
+    const items=[...e.dataTransfer.items];
+    const fileItems=items.filter(it=>it.kind==='file');
+    if(fileItems.length){fileItems.forEach(it=>{const f=it.getAsFile();if(f)loadFile(f);});return;}
+  }
+  showImp('Nepodařilo se načíst soubor. Zkuste soubor nejdřív uložit a pak nahrát.','err');
+});
+fi.addEventListener('change',e=>{[...e.target.files].forEach(loadFile);fi.value='';});
+
+function detectMachine(fname,rows){
+  if(/XL.?105/i.test(fname))return'XL105';
+  if(/XL.?106/i.test(fname))return'XL106';
+  for(let i=1;i<Math.min(rows.length,10);i++){
+    const v=rows[i][0]?String(rows[i][0]):'';
+    if(/XL\s*105/i.test(v))return'XL105';
+    if(/XL\s*106/i.test(v))return'XL106';
+  }
+  return null;
+}
+function detectFmt(name){if(name==='opis')return'A';if(/XL10[56]/i.test(name))return'B';return null;}
+
+function loadFile(file){
+  if(!file){showImp('Soubor se nepodařilo načíst.','err');return;}
+  // Check file type
+  if(!file.name.match(/\.xlsx?$/i)){showImp(`${file.name}: není xlsx soubor.`,'warn');return;}
+  showImp(`Načítám ${file.name}...`,'ok');
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array',cellDates:false});
+      let sName=null,fmt=null;
+      for(const n of wb.SheetNames){fmt=detectFmt(n);if(fmt){sName=n;break;}}
+      if(!sName){showImp(`${file.name}: list "opis" nebo "XL105/XL106" nebyl nalezen.`,'err');return;}
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[sName],{header:1});
+      const machine=detectMachine(file.name,rows);
+      if(!machine){showImp(`${file.name}: nelze určit stroj (XL105/XL106).`,'err');return;}
+      importRows(rows,file.name,fmt,machine);
+    }catch(err){showImp(`${file.name}: chyba — ${err.message}`,'err');}
+  };
+  r.onerror=()=>showImp(`${file.name}: chyba čtení souboru.`,'err');
+  r.readAsArrayBuffer(file);
+}
+
+function importRows(rows,fname,fmt,machine){
+  const isB=fmt==='B';
+  const zakTL=[];
+  for(let i=1;i<rows.length;i++){
+    const z=rows[i][1]?String(rows[i][1]).trim():'';
+    if(z&&z!=='\xa0'&&z!=='None'&&z!==' ')zakTL.push({i,z});
+  }
+  const nearBefore=idx=>{for(let k=zakTL.length-1;k>=0;k--)if(zakTL[k].i<idx)return zakTL[k].z;return'';};
+  const nearAfter=idx=>{for(let k=0;k<zakTL.length;k++)if(zakTL[k].i>idx)return zakTL[k].z;return'';};
+
+  const parsed=[];
+  for(let i=1;i<rows.length;i++){
+    const row=rows[i];
+    const pRaw=isB?row[11]:row[12];
+    const popis=pRaw?String(pRaw).trim():'';
+    if(!popis||popis==='\xa0'||popis===' ')continue;
+    let zak=row[1]?String(row[1]).trim():'';
+    if(zak==='\xa0'||zak==='None'||zak===' ')zak='';
+    const casRaw=row[5]?String(row[5]).trim():'';
+    const datum=excelDate(isB?row[10]:row[11]);
+    const trvMin=isB?parseDurB(casRaw):parseDur(casRaw);
+    const casStart=isB?'':startTime(casRaw);
+    // Full time range for display: "08:04-08:48" or '' for format B
+    const casRange=isB?'':extractRange(casRaw);
+    const catAuto=getCat(popis);
+    let zakFallback=false,zakInferred=false;
+    if(catAuto==='Náhledy'&&!zak){const nz=nearAfter(i);if(nz){zak=nz;zakFallback=true;}}
+    else if(!zak){const pz=nearBefore(i),nz=nearAfter(i);if(pz&&nz&&pz===nz){zak=pz;zakInferred=true;}}
+    parsed.push({datum,cas:casStart,casRange,trvani_min:trvMin,popis,pracovnik:row[2]?String(row[2]).trim():'',zakazka:zak,zakFallback,zakInferred,catAuto});
+  }
+
+  const imap=new Map();
+  parsed.forEach(r=>{
+    const k=`${machine}|${r.datum}|${r.popis.toLowerCase().trim()}|${r.pracovnik}`;
+    if(imap.has(k)){const ex=imap.get(k);ex.trvani_min+=r.trvani_min;ex.mergedCount++;if(!ex.zakazka&&r.zakazka){ex.zakazka=r.zakazka;ex.zakFallback=r.zakFallback;}}
+    else imap.set(k,{...r,mergedCount:1,_key:k});
+  });
+
+  const db=loadDB(machine);
+  let added=0,skipped=0,updated=0;
+  const now=new Date().toISOString();
+  imap.forEach((rec,key)=>{
+    if(db.has(key)){
+      const ex=db.get(key);
+      let changed=false;
+      // Update trvani_min if new import has more merged rows
+      if(rec.mergedCount>(ex.mergedCount||1)){ex.trvani_min=rec.trvani_min;ex.mergedCount=rec.mergedCount;changed=true;}
+      // Fill in casRange if we now have it (e.g. re-importing from opis format)
+      if(rec.casRange&&!ex.casRange){ex.casRange=rec.casRange;changed=true;}
+      // Fill in cas (start time) if missing
+      if(rec.cas&&!ex.cas){ex.cas=rec.cas;changed=true;}
+      if(changed)updated++;else skipped++;
+    }
+    else db.set(key,{datum:rec.datum,cas:rec.cas,casRange:rec.casRange||'',trvani_min:rec.trvani_min,popis:rec.popis,pracovnik:rec.pracovnik,zakazka:rec.zakazka,zakFallback:rec.zakFallback,zakInferred:rec.zakInferred,catAuto:rec.catAuto,catOverride:null,note:'',deleted:false,mergedCount:rec.mergedCount||1,importedAt:now,_key:key,machine,pending:false});added++;
+  });
+  saveDB(machine,db);
+  inferZakazkyInDB(machine);
+  updateBadge();buildMonthBtns();renderAll();
+  showImp(`✓ ${fname} (${machine}): přidáno ${added}${updated?`, upd. ${updated}`:''}${skipped?`, přeskočeno ${skipped}`:''}`,added>0?'ok':'warn');
+  // Naplánovat zálohu za 15 minut (resetuje se při každém dalším importu)
+  scheduleAutoBackup();
+}
+
+function showImp(msg,cls='ok'){
+  const el=document.getElementById('imp-res');el.textContent=msg;el.className=`imp-res ${cls}`;el.style.display='block';
+  setTimeout(()=>el.style.display='none',8000);
+}
+
+// ═══════════════════════════════════════════════════════
+// ZAKÁZKA INFERENCE
+// ═══════════════════════════════════════════════════════
+function inferZakazkyInDB(machine){
+  const db=loadDB(machine);
+  const all=[...db.values()].filter(r=>!r.deleted);
+  all.sort((a,b)=>(dateKey(a.datum)+(a.cas||'')).localeCompare(dateKey(b.datum)+(b.cas||'')));
+  const isOrig=r=>r.zakazka&&!r.zakInferred&&!r.zakManual;
+  const isNahled=r=>(r.catAuto==='Náhledy')||(r.catOverride==='Náhledy');
+  let changed=0;
+  for(let i=0;i<all.length;i++){
+    const r=all[i];
+    if(r.zakManual||isNahled(r)||isOrig(r))continue;
+    if(r.zakInferred)continue; // already inferred during import — don't touch
+    let pz='';for(let j=i-1;j>=0;j--)if(isOrig(all[j])){pz=all[j].zakazka;break;}
+    let nz='';for(let j=i+1;j<all.length;j++)if(isOrig(all[j])){nz=all[j].zakazka;break;}
+    if(pz&&nz&&pz===nz){r.zakazka=pz;r.zakInferred=true;r.zakFallback=false;changed++;}
+  }
+  if(changed>0)saveDB(machine,db);
+  return changed;
+}
+function inferAllMachines(){let t=0;MACHINES.forEach(m=>t+=inferZakazkyInDB(m));return t;}
+function runManualInference(){
+  const t=inferAllMachines();
+  const el=document.getElementById('infer-result');
+  el.textContent=t>0?`✓ Doplněno ${t} zakázek`:'Nic nového';
+  el.style.display='inline';setTimeout(()=>el.style.display='none',4000);
+  updateBadge();buildMonthBtns();renderAll();
+}
+
+// ═══════════════════════════════════════════════════════
+// EXPORT XLSX
+// ═══════════════════════════════════════════════════════
+function exportXlsx(){
+  const data=getFiltered();
+  data.sort((a,b)=>(dateKey(a.datum)+(a.cas||'')).localeCompare(dateKey(b.datum)+(b.cas||'')));
+  const wb=XLSX.utils.book_new();
+  const rows=[['Export'],['Stroj','Datum','Čas','Trvání','Popis','Pracovník','Zakázka','Kategorie','Poznámka']];
+  data.forEach(r=>rows.push([r._machine,r.datum,r.cas||'',fmtDur(r.trvani_min),r.popis+(r.mergedCount>1?` [×${r.mergedCount}]`:''),r.pracovnik,r.zakazka||'',effCatName(r),r.note||'']));
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:7},{wch:11},{wch:7},{wch:8},{wch:44},{wch:17},{wch:38},{wch:24},{wch:35}];
+  XLSX.utils.book_append_sheet(wb,ws,'Export');
+  XLSX.writeFile(wb,`integraf_export_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+// ═══════════════════════════════════════════════════════
+// BACKUP
+// ═══════════════════════════════════════════════════════
+var _autoBackupTimer=null;
+var _autoBackupCountdownTimer=null;
+var _hourlyTimer=null;
+var AUTO_BACKUP_DELAY=15*60*1000; // 15 minut po importu
+var HOURLY_INTERVAL=60*60*1000;   // pak každou hodinu
+
+function scheduleAutoBackup(){
+  // Zrušit případný existující jednorázový časovač
+  if(_autoBackupTimer)clearTimeout(_autoBackupTimer);
+  if(_autoBackupCountdownTimer)clearInterval(_autoBackupCountdownTimer);
+
+  // Odpočet v toastu
+  var remaining=AUTO_BACKUP_DELAY/1000;
+  var toast=document.getElementById('backup-toast');
+  toast.style.display='block';
+
+  _autoBackupCountdownTimer=setInterval(function(){
+    remaining--;
+    var min=Math.floor(remaining/60);
+    var sec=remaining%60;
+    toast.textContent='💾 Záloha za '+min+':'+String(sec).padStart(2,'0')+'…';
+    if(remaining<=0)clearInterval(_autoBackupCountdownTimer);
+  },1000);
+
+  // Po 15 minutách první záloha, pak každou hodinu
+  _autoBackupTimer=setTimeout(function(){
+    clearInterval(_autoBackupCountdownTimer);
+    autoBackup();
+    // Spustit hodinové opakování
+    if(_hourlyTimer)clearInterval(_hourlyTimer);
+    _hourlyTimer=setInterval(function(){autoBackup();},HOURLY_INTERVAL);
+  },AUTO_BACKUP_DELAY);
+}
+
+function autoBackup(){
+  try{
+    var payload={version:3,exportedAt:new Date().toISOString(),cfg:loadCfg(),machines:{}};
+    MACHINES.forEach(function(m){payload.machines[m]=[...loadDB(m).entries()];});
+    var total=0;MACHINES.forEach(function(m){total+=payload.machines[m].length;});
+    if(total===0)return;
+    var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;
+    a.download='integraf_auto_'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'.json';
+    a.style.display='none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},2000);
+    localStorage.setItem('xl_last_backup_v1',new Date().toISOString());
+    var toast=document.getElementById('backup-toast');
+    toast.textContent='✅ Záloha automaticky uložena';
+    setTimeout(function(){toast.style.display='none';},5000);
+  }catch(e){
+    document.getElementById('backup-toast').textContent='⚠ Zálohu se nepodařilo uložit.';
+  }
+}
+
+function exportBackupAll(){
+  setTimeout(function(){
+    var payload={version:3,exportedAt:new Date().toISOString(),cfg:loadCfg(),machines:{}};
+    MACHINES.forEach(function(m){payload.machines[m]=[...loadDB(m).entries()];});
+    var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;
+    a.download='integraf_zaloha_'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'.json';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
+    localStorage.setItem('xl_last_backup_v1',new Date().toISOString());
+  },50);
+}
+
+function openBackupFile(){
+  document.getElementById('bk-hidden-input').click();
+}
+
+function processBackupFile(file){
+  if(!file){showBkRes('Žádný soubor.','err');return;}
+  showBkRes('Načítám: '+file.name+' ('+file.size+' B)','ok');
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var text=ev.target.result;
+    if(!text){showBkRes('✗ Soubor je prázdný.','err');return;}
+    var p;
+    try{p=JSON.parse(text);}
+    catch(e){showBkRes('✗ Neplatný JSON: '+e.message,'err');return;}
+    var machines=p.machines||(p.machine?{[p.machine]:p.records}:null);
+    if(!machines){showBkRes('✗ Neplatný formát zálohy.','err');return;}
+    var added=0,kept=0;
+    Object.keys(machines).forEach(function(m){
+      var entries=machines[m];
+      if(!Array.isArray(entries)){return;}
+      var db=loadDB(m);
+      entries.forEach(function(pair){
+        if(!Array.isArray(pair)||pair.length<2)return;
+        var key=pair[0],rec=pair[1];
+        if(!db.has(key)){db.set(key,rec);added++;}
+        else{var ex=db.get(key);if(!ex.note&&rec.note)ex.note=rec.note;if(!ex.catOverride&&rec.catOverride)ex.catOverride=rec.catOverride;kept++;}
+      });
+      saveDB(m,db);
+    });
+    if(p.cfg)localStorage.setItem('xl_cfg_v1',JSON.stringify(p.cfg));
+    showBkRes('✓ Hotovo! Přidáno: '+added+', existovalo: '+kept,'ok');
+    setTimeout(function(){updateBadge();buildMonthBtns();renderAll();},100);
+  };
+  reader.onerror=function(e){showBkRes('✗ Chyba čtení: '+e,'err');};
+  reader.readAsText(file);
+}
+
+function showBkRes(msg,cls){
+  var el=document.getElementById('bk-res');
+  if(!el)return;
+  el.textContent=msg;
+  el.style.color=cls==='ok'?'var(--green)':'var(--red)';
+}
+
+function clearDB(m){
+  if(!confirm('Smazat databázi '+m+'? Nelze vrátit.'))return;
+  saveDB(m,new Map());updateBadge();buildMonthBtns();renderAll();
+}
+
+// ═══════════════════════════════════════════════════════
+// AUTO BACKUP REMINDER
+// ═══════════════════════════════════════════════════════
+(function(){
+  const last=localStorage.getItem('xl_last_backup_v1');
+  const days=last?Math.floor((Date.now()-new Date(last).getTime())/86400000):999;
+  if(days>=7){
+    const t=document.getElementById('backup-toast');
+    t.textContent=last?`Záloha: před ${days} dny`:'Databáze nezálohována';
+    t.style.display='block';
+    setTimeout(()=>t.style.display='none',12000);
+  }
+})();
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+// Check localStorage for any existing data under old or new keys
+(function migrateLegacyData(){
+  var legacyKeys=['xl_db_v1_XL106','xl_db_v1_XL105','xl106_db_v1','xl105_db_v1'];
+  legacyKeys.forEach(function(lk){
+    var data=localStorage.getItem(lk);
+    if(!data)return;
+    try{
+      var parsed=JSON.parse(data);
+      if(!parsed||!parsed.length)return;
+      var machine=lk.includes('106')?'XL106':'XL105';
+      var newKey='xl_db_v2_'+machine;
+      if(!localStorage.getItem(newKey)){
+        localStorage.setItem(newKey,data);
+        console.log('Migrated',parsed.length,'records from',lk,'to',newKey);
+      }
+    }catch(e){}
+  });
+})();
+
+// Backup file input
+document.getElementById('bk-hidden-input').addEventListener('change', function(){
+  if(this.files && this.files[0]){
+    processBackupFile(this.files[0]);
+    this.value='';
+  }
+});
+
+inferAllMachines();
+updateBadge();
+buildMachineToggles();
+buildMonthBtns();
+renderAll();
+renderPending();
+</script>
+</body>
+</html>

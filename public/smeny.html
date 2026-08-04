@@ -1,0 +1,664 @@
+<meta charset="utf-8">
+<style>
+  :root{
+    --ink:#14171a; --paper:#f2f0ec; --line:#c9c4bb; --steel:#5a6672;
+    --ok:#2f7d4f; --warn:#b8860b; --bad:#c0392b; --red:#d0021b;
+    --zel:#2f9e44; --mod:#1971c2; --wknd:#e9e6df; --svat:#f6e7cf;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+       font:14px/1.45 "Inter","Segoe UI",system-ui,sans-serif}
+  header{background:var(--ink);color:#fff;padding:14px 18px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  header h1{margin:0;font-size:16px;letter-spacing:.14em;text-transform:uppercase;font-weight:700}
+  header .sub{color:#9aa4ad;font-size:12px}
+  nav{display:flex;gap:2px;background:var(--ink);padding:0 12px;flex-wrap:wrap}
+  nav button{background:none;border:0;color:#9aa4ad;padding:9px 14px;cursor:pointer;
+    font:600 12px/1 system-ui;letter-spacing:.08em;text-transform:uppercase;border-bottom:3px solid transparent}
+  nav button.on{color:#fff;border-bottom-color:var(--red)}
+  main{padding:18px;max-width:none}
+  #prehled .card:first-child{padding:14px 14px 16px}
+  .cell{background:#fff;min-height:132px;min-width:0;overflow:hidden;padding:4px;cursor:pointer;position:relative}
+  .bar{margin-top:3px;border-radius:2px;overflow:hidden}
+  .barhead{display:flex;justify-content:space-between;gap:6px;color:#fff;padding:3px 5px;
+    font:700 11px/1.3 system-ui;letter-spacing:.04em}
+  .barhead.Z{background:var(--zel)} .barhead.M{background:var(--mod)}
+  .barnote{font:600 10px/1.35 system-ui;padding:3px 5px;color:#fff}
+  .barnote.bad{background:var(--bad)} .barnote.warn{background:var(--warn)}
+  .barnote div{white-space:normal;overflow-wrap:anywhere;margin-bottom:1px}
+  section{display:none} section.on{display:block}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.1em;margin:0 0 10px;color:var(--steel)}
+  .card{background:#fff;border:1px solid var(--line);padding:14px;margin-bottom:14px}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}
+  th{background:#e7e4de;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+  input,select,button.act{font:13px system-ui;padding:5px 7px;border:1px solid var(--line);background:#fff}
+  button.act{background:var(--ink);color:#fff;border:0;padding:6px 12px;cursor:pointer;font-weight:600}
+  button.act.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  button.x{background:none;border:0;color:var(--bad);cursor:pointer;font-weight:700}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  .tag{display:inline-block;padding:1px 6px;border:1px solid var(--line);font-size:11px;margin:1px;background:#f6f5f2}
+  .tym{font-weight:700} .tym.Z{color:var(--zel)} .tym.M{color:var(--mod)}
+  tr.rtZ td:first-child{box-shadow:inset 5px 0 0 var(--zel)}
+  tr.rtM td:first-child{box-shadow:inset 5px 0 0 var(--mod)}
+  tr.rtZ td{background:#f3faf4} tr.rtM td{background:#f2f7fc}
+  select.selZ,option.optZ{color:var(--zel);font-weight:600}
+  select.selM,option.optM{color:var(--mod);font-weight:600}
+  .tag.zast{background:#efe6f7;border-color:#7d5ba6;color:#57407a;font-weight:600}
+  .off{color:#a49f97;text-decoration:line-through}
+  .msg{padding:4px 8px;margin:3px 0;font-size:12px;border-left:3px solid}
+  .msg.bad{border-color:var(--bad);background:#fbeceb} .msg.warn{border-color:var(--warn);background:#fbf5e6}
+  .msg.ok{border-color:var(--ok);background:#eef6f0}
+  small.hint{color:var(--steel);display:block;margin-top:6px;font-size:12px}
+  .mach label{display:inline-block;white-space:nowrap}
+
+  /* kalendář */
+  .calhead{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .calhead h3{margin:0;font-size:18px;min-width:180px;text-transform:capitalize}
+  .cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
+  .cal .dow{background:#e7e4de;font:600 11px/1 system-ui;text-transform:uppercase;letter-spacing:.06em;
+    padding:6px 4px;text-align:center;color:var(--steel)}
+  .cell.mimo{background:#faf9f7;color:#bdb8b0}
+  .cell.wknd{background:var(--wknd)} .cell.svatek{background:var(--svat)}
+  .cell.sel{outline:2px solid var(--ink);outline-offset:-2px}
+  .cell.dnes .num{background:var(--ink);color:#fff;border-radius:50%;width:20px;height:20px;
+    display:inline-flex;align-items:center;justify-content:center}
+  .num{font:600 12px/20px system-ui}
+  .svname{font-size:10px;color:#8a6d3b;display:block;line-height:1.2;margin-bottom:2px}
+  .volno{font-size:10px;color:#9a948c;margin-top:6px;font-style:italic}
+  .cell.prac{background:#fff}
+  .cell.prac .num{text-decoration:underline}
+  .planbox{border:1px dashed var(--line);padding:8px;margin-bottom:10px;background:#faf9f7}
+  .planbox label i{color:var(--steel);font-size:10px}
+  .kol{padding:2px 0;font-size:12.5px;line-height:1.5}
+  .kol .dot{width:9px;height:9px}
+  .alert{background:var(--bad);color:#fff;padding:8px 10px;margin:6px 0;font-weight:700;
+    text-transform:uppercase;letter-spacing:.05em;font-size:12px}
+  .alert span{display:inline-block;background:rgba(255,255,255,.2);padding:1px 6px;margin:2px 2px 0 0;font-weight:600}
+  .shift{border-left:5px solid var(--steel);padding-left:10px;margin-bottom:14px}
+  .shift.Z{border-left-color:var(--zel)} .shift.M{border-left-color:var(--mod)}
+  .shift h3{margin:0 0 4px;font-size:14px}
+  @media(max-width:700px){.cell{min-height:72px}.bar{font-size:9px}}
+
+  header{justify-content:space-between}
+  .hdr-l{display:flex;align-items:center;gap:14px}
+  .chip{width:26px;height:26px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+    background:#ffd500;color:#101216;font:700 15px/1 ui-monospace,monospace}
+  .hdr-r{display:flex;align-items:center;gap:12px;font-size:12px}
+  .hdr-r a{color:#9aa4ad;text-decoration:none}
+  .hdr-r a:hover{color:#fff}
+  .rolebadge{font:700 9px/1 ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;
+    padding:4px 7px;border:1px solid #3a424b;color:#9aa4ad}
+  .hdr-r button{background:none;border:1px solid #3a424b;color:#9aa4ad;padding:6px 11px;
+    font:700 10px/1 ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+  .hdr-r button:hover{color:#fff;border-color:#9aa4ad}
+  .robanner{background:var(--svat);color:#7a5b12;border-bottom:1px solid var(--warn);
+    padding:8px 18px;font-size:13px;font-weight:600}
+  body.ro main input,body.ro main select,body.ro main textarea,body.ro main button{
+    pointer-events:none;opacity:.55}
+</style>
+
+<header>
+  <div class="hdr-l">
+    <span class="chip">Y</span>
+    <div>
+      <h1>Obsazení směn</h1>
+      <span class="sub">plánování dovolených s kontrolou pokrytí strojů</span>
+    </div>
+  </div>
+  <div class="hdr-r">
+    <a href="index.html">← BOBR</a>
+    <span class="rolebadge" id="roleBadge">…</span>
+    <button id="logoutBtn">Odhlásit</button>
+  </div>
+</header>
+<div class="robanner" id="roBanner" style="display:none">Režim náhledu — změny se neukládají.</div>
+<nav>
+  <button data-t="prehled" class="on">Kalendář</button>
+  <button data-t="lide">Lidé</button>
+  <button data-t="stroje">Stroje</button>
+  <button data-t="nepritomnost">Nepřítomnosti</button>
+  <button data-t="data">Nastavení</button>
+</nav>
+
+<main>
+<section id="prehled" class="on">
+  <div class="card">
+    <div class="calhead">
+      <button class="act ghost" id="prev">◀</button>
+      <h3 id="mesic"></h3>
+      <button class="act ghost" id="next">▶</button>
+      <button class="act ghost" id="dnes">Dnes</button>
+      <span class="tag" style="background:var(--wknd)">víkend a svátek – směny prázdné, limity neplatí</span>
+    </div>
+    <div class="cal" id="cal"></div>
+  </div>
+  <div class="card" id="denDetail"></div>
+</section>
+
+<section id="lide">
+  <div class="card">
+    <h2>Přidat pracovníka</h2>
+    <div class="row">
+      <input id="wName" placeholder="Jméno">
+      <select id="wRole">
+        <option value="mistr">Mistr</option>
+        <option value="serizovac">Seřizovač</option>
+        <option value="rezac">Řezač</option>
+        <option value="knihar">Knihařka</option>
+        <option value="dp">Domácí práce</option>
+      </select>
+      <select id="wTeam"><option class="optZ" value="Z">Zelený tým</option><option class="optM" value="M">Modrý tým</option></select>
+      <button class="act" id="wAdd">Přidat</button>
+    </div>
+    <small class="hint">Stroje a zástup za mistra se nastavují v tabulce níže (jen u seřizovačů).</small>
+  </div>
+  <div class="card"><div id="lideTab"></div></div>
+</section>
+
+<section id="stroje">
+  <div class="card">
+    <div class="row">
+      <input id="mName" placeholder="Označení stroje">
+      <input id="mNote" placeholder="Poznámka" size="30">
+      <button class="act" id="mAdd">Přidat stroj</button>
+    </div>
+    <div id="strojeTab"></div>
+  </div>
+</section>
+
+<section id="nepritomnost">
+  <div class="card">
+    <h2>Zadat nepřítomnost</h2>
+    <div class="row">
+      <select id="aW"></select>
+      <select id="aType">
+        <option>Dovolená</option><option>Nemoc</option><option>Náhradní volno</option>
+        <option>Lékař</option><option>Neplacené volno</option><option>Školení</option>
+      </select>
+      <label>od <input type="date" id="aFrom"></label>
+      <label>do <input type="date" id="aTo"></label>
+      <button class="act" id="aAdd">Uložit</button>
+    </div>
+    <div id="aCheck"></div>
+  </div>
+  <div class="card"><h2>Evidence</h2><div id="absTab"></div></div>
+</section>
+
+<section id="data">
+  <div class="card">
+    <h2>Střídání směn</h2>
+    <div class="row">
+      <label>Referenční pondělí <input type="date" id="refMon"></label>
+      <label>V tom týdnu má ranní
+        <select id="refTeam"><option value="Z">zelený tým</option><option value="M">modrý tým</option></select>
+      </label>
+      <button class="act" id="refSave">Uložit</button>
+    </div>
+    <small class="hint">Od tohoto týdne se ranní a odpolední střídají po týdnu.</small>
+  </div>
+  <div class="card">
+    <h2>Limity a heslo</h2>
+    <div class="row">
+      <label>Min. knihařek <input type="number" id="minK" min="0" style="width:60px"></label>
+      <label>Min. řezačů <input type="number" id="minR" min="0" style="width:60px"></label>
+      <label>Práh výpadku <input type="number" id="prah" min="1" max="100" style="width:60px"> %</label>
+      <label>Heslo pro výjimku <input id="pin"></label>
+      <button class="act" id="limSave">Uložit</button>
+    </div>
+    <small class="hint">Limity platí v pracovní dny; o víkendu a ve svátek se nekontrolují.
+      Práh výpadku: když na směně chybí tolik procent seřizovačů nebo knihařek, směna je červená.
+      Heslo je jen provozní pojistka – v datech aplikace je uložené čitelně.</small>
+  </div>
+  <div class="card">
+    <h2>Záloha</h2>
+    <div class="row">
+      <button class="act ghost" id="exp">Exportovat JSON</button>
+      <input type="file" id="imp" accept=".json">
+    </div>
+    <small class="hint">Data se ukládají automaticky na server. Export je záloha pro kohokoli; obnova ze zálohy (import) je jen pro administrátora.</small>
+  </div>
+</section>
+</main>
+
+<script src="api.js"></script>
+<script>
+const ROLE={mistr:"Mistr",serizovac:"Seřizovač",rezac:"Řezač",knihar:"Knihařka",dp:"Domácí práce"};
+const TYM={Z:"Zelený",M:"Modrý"};
+const DNY=["neděle","pondělí","úterý","středa","čtvrtek","pátek","sobota"];
+const MES=["leden","únor","březen","duben","květen","červen","červenec","srpen","září","říjen","listopad","prosinec"];
+const STROJE=["STAHL 52","STAHL 82","STAHL KH 78","MBO","V1","V1 DUPLO","HUGO BECK","LAMINACE","GPE",
+  "PŘÍKLOP","AUTOMAT","BRAUSSE BORA","OKÉNKOVAČKA","LEPIČKA OMEGA","SNÁŠEČKA","V2"];
+let db={workers:[],machines:[],absences:[],plan:{},ref:{monday:"2026-07-27",team:"Z"},
+        limits:{knihar:4,rezac:1,prah:20},pin:"1234"};
+let vybrany=null, kurzor=new Date();
+const uid=()=>Math.random().toString(36).slice(2,8);
+const $=s=>document.querySelector(s);
+
+/* ---- svátky ---- */
+function velikonoce(y){ // anonymní gregoriánský algoritmus → neděle velikonoční
+  const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),
+    g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,
+    l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),
+    mes=Math.floor((h+l-7*m+114)/31),den=((h+l-7*m+114)%31)+1;
+  return new Date(Date.UTC(y,mes-1,den));
+}
+const svCache={};
+function svatky(y){
+  if(svCache[y]) return svCache[y];
+  const s={};
+  const fix=[[1,1,"Nový rok"],[5,1,"Svátek práce"],[5,8,"Den vítězství"],[7,5,"Cyril a Metoděj"],
+    [7,6,"Jan Hus"],[9,28,"Den české státnosti"],[10,28,"Vznik ČSR"],[11,17,"Den boje za svobodu"],
+    [12,24,"Štědrý den"],[12,25,"1. svátek vánoční"],[12,26,"2. svátek vánoční"]];
+  fix.forEach(([m,d,n])=>s[`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`]=n);
+  const ne=velikonoce(y);
+  const vp=new Date(ne); vp.setUTCDate(vp.getUTCDate()-2);
+  const vpo=new Date(ne); vpo.setUTCDate(vpo.getUTCDate()+1);
+  s[d2s(vp)]="Velký pátek"; s[d2s(vpo)]="Velikonoční pondělí";
+  return svCache[y]=s;
+}
+const svatek=ds=>svatky(+ds.slice(0,4))[ds]||null;
+
+const APP_KEY="smeny";
+let canEdit=false, isAdmin=false;
+
+async function load(){
+  const me=await requireAuth("index.html");   // nepřihlášené pošle na portál
+  if(!me) return;
+  const role=await getRole(APP_KEY);
+  isAdmin=!!me.is_admin;
+  const canView=isAdmin||role!==null;
+  if(!canView){ document.body.innerHTML='<p style="padding:26px;font:15px system-ui">Nemáš přístup k této aplikaci. <a href="index.html">Zpět na panel</a></p>'; return; }
+  canEdit=isAdmin||role==="edit";
+
+  const saved=await loadAppData(APP_KEY);      // data ze serveru
+  if(saved) db=Object.assign(db,saved);
+
+  // migrace starších dat (beze změny)
+  db.workers.forEach(w=>{if(w.team==="A")w.team="Z"; if(w.team==="B")w.team="M";
+    if(!w.zastup) w.zastup=w.deputyFor?[w.deputyFor]:[]; delete w.deputyFor;});
+  if(db.ref.team==="A")db.ref.team="Z"; if(db.ref.team==="B")db.ref.team="M";
+  if(db.limits.prah==null) db.limits.prah=20;
+  if(!db.plan) db.plan={};
+  if(!db.machines.length) db.machines=STROJE.map(n=>({id:uid(),name:n,note:""}));
+  vybrany=d2s(new Date());
+
+  $("#roleBadge").textContent = isAdmin ? "admin" : (canEdit ? "editace" : "náhled");
+  if(!canEdit){ document.body.classList.add("ro"); $("#roBanner").style.display="block"; }
+  if(!isAdmin){ const imp=$("#imp"); if(imp) imp.disabled=true; }   // obnova ze zálohy jen admin
+
+  render();
+  if(canEdit){ try{ await saveAppData(APP_KEY, db); }catch(e){ console.error(e); } }
+}
+async function save(){
+  render();
+  if(!canEdit) return;                          // v náhledu se neukládá
+  try{ await saveAppData(APP_KEY, db); }
+  catch(e){ console.error(e); alert("Uložení na server se nezdařilo, zkontroluj připojení."); }
+}
+$("#logoutBtn").onclick=()=>signOut("index.html");
+
+function d2s(d){return d.toISOString().slice(0,10);}
+const s2d=s=>new Date(s+"T00:00:00Z");
+function monday(d){const x=new Date(d);const w=(x.getUTCDay()+6)%7;x.setUTCDate(x.getUTCDate()-w);return x;}
+function smena(ds,team){
+  const idx=Math.round((monday(s2d(ds))-monday(s2d(db.ref.monday)))/6048e5);
+  const zRanni=(((idx%2)+2)%2===0)===(db.ref.team==="Z");
+  return (team==="Z")===zRanni?"ranní":"odpolední";
+}
+const poradi=ds=>smena(ds,"Z")==="ranní"?["Z","M"]:["M","Z"]; // ranní vždy nahoře
+const absent=(id,ds)=>db.absences.find(a=>a.w===id&&a.from<=ds&&ds<=a.to);
+const wById=id=>db.workers.find(w=>w.id===id);
+const isWeekend=ds=>[0,6].includes(s2d(ds).getUTCDay());
+const volno=ds=>isWeekend(ds)||!!svatek(ds);
+const plan=ds=>(db.plan||{})[ds]||null;      // ruční obsazení víkendu/svátku
+const klidno=ds=>volno(ds)&&!plan(ds);       // volno, na které nikdo nejde
+
+// kdo v daný den zastupuje kterého mistra (napříč týmy), počítá se pro celý den najednou
+function zastupDne(ds){
+  const m=new Map();                       // id seřizovače -> id mistra
+  if(volno(ds)) return m;
+  db.workers.filter(w=>w.role==="mistr"&&absent(w.id,ds))
+    .sort((a,b)=>a.id<b.id?-1:1)
+    .forEach(mi=>{
+      const volni=db.workers.filter(w=>(w.zastup||[]).includes(mi.id)&&!absent(w.id,ds)&&!m.has(w.id));
+      if(!volni.length) return;            // chybějící zástup ohlásí stav()
+      // ztráta = stroje, které by po jeho odchodu na mistra zůstaly v jeho týmu bez seřizovače
+      const ztrata=w=>db.machines.filter(mm=>(w.machines||[]).includes(mm.id)&&
+        !db.workers.some(o=>o.id!==w.id&&o.team===w.team&&o.role==="serizovac"&&
+          !absent(o.id,ds)&&!m.has(o.id)&&(o.machines||[]).includes(mm.id))).length;
+      volni.sort((a,b)=>ztrata(a)-ztrata(b) || (a.team===mi.team?-1:b.team===mi.team?1:0));
+      m.set(volni[0].id,mi.id);
+    });
+  return m;
+}
+
+function stav(ds,team){
+  const p=plan(ds), klid=klidno(ds), rezim=klid?"klid":volno(ds)?"vikend":"beznyden";
+  const zd=zastupDne(ds);
+  const zaKoho=wid=>wById(zd.get(wid));                 // mistr, kterého dotyčný zastupuje
+  const jinde=w=>zd.has(w.id)&&zaKoho(w.id).team!==team; // odešel zastupovat do druhého týmu
+
+  let lidi;
+  if(rezim==="vikend") lidi=db.workers.filter(w=>w.team===team&&(p[team]||[]).includes(w.id));
+  else lidi=db.workers.filter(w=>w.team===team)
+    .concat(db.workers.filter(w=>w.team!==team&&zd.has(w.id)&&zaKoho(w.id).team===team)); // hosté na zástup
+
+  const pritomni=lidi.filter(w=>!absent(w.id,ds)&&!jinde(w));
+  const has=r=>pritomni.filter(w=>w.role===r);
+  const vsech=r=>lidi.filter(w=>w.role===r);
+  const msgs=[];
+
+  // zastupující seřizovač nejde na stroje
+  const naStrojich=pritomni.filter(w=>w.role==="serizovac"&&!zd.has(w.id));
+  const umi=m=>lidi.some(w=>w.role==="serizovac"&&(w.machines||[]).includes(m.id));
+  const volneStroje=db.machines.filter(m=>umi(m)&&!naStrojich.some(w=>(w.machines||[]).includes(m.id)));
+  const obsazene=db.machines.filter(m=>naStrojich.some(w=>(w.machines||[]).includes(m.id)));
+  const odstavenePo=w=>db.machines.filter(m=>(w.machines||[]).includes(m.id)&&volneStroje.includes(m));
+
+  if(rezim==="klid"){
+    msgs.push(["ok","Volno – směna je prázdná. Práci lze naplánovat v detailu dne."]);
+  }else if(rezim==="vikend"){
+    if(!lidi.length) msgs.push(["warn","Na tuto směnu není nikdo naplánovaný."]);
+    else{
+      lidi.filter(w=>absent(w.id,ds)).forEach(w=>
+        msgs.push(["bad",`${w.name} je naplánovaný, ale má ${absent(w.id,ds).type.toLowerCase()}.`]));
+      volneStroje.forEach(m=>msgs.push(["bad",`Stroj ${m.name} nemá seřizovače.`]));
+      if(!msgs.length) msgs.push(["ok",`Naplánováno ${pritomni.length} lidí. Minimální obsazení se nekontroluje.`]);
+    }
+  }else{
+    // chybějící mistři této směny
+    db.workers.filter(w=>w.role==="mistr"&&w.team===team&&absent(w.id,ds)).forEach(mi=>{
+      const z=[...zd.keys()].map(wById).find(w=>zd.get(w.id)===mi.id);
+      const urceni=db.workers.filter(w=>(w.zastup||[]).includes(mi.id));
+      if(z){
+        const od=odstavenePo(z);
+        msgs.push(["warn",`Mistra ${mi.name} zastupuje ${z.name}${z.team!==team?` (${TYM[z.team].toLowerCase()} tým)`:""} – nedělá na strojích.`+
+          (od.length?` Odstaveno: ${od.map(m=>m.name).join(", ")}.`:" Jeho stroje pokryjí ostatní.")]);
+      }
+      else if(!urceni.length) msgs.push(["bad",`Mistr ${mi.name} chybí a nemá určený zástup.`]);
+      else msgs.push(["bad",`Mistr ${mi.name} i všichni jeho zástupci (${urceni.map(x=>x.name).join(", ")}) chybí.`]);
+    });
+    // vlastní lidé, kteří odešli zastupovat do druhého týmu
+    db.workers.filter(w=>w.team===team&&jinde(w)).forEach(w=>{
+      const od=db.machines.filter(m=>(w.machines||[]).includes(m.id)&&volneStroje.includes(m));
+      msgs.push(["warn",`${w.name} zastupuje mistra ${zaKoho(w.id).name} ve druhém týmu – tady chybí.`+
+        (od.length?` Odstaveno: ${od.map(m=>m.name).join(", ")}.`:"")]);
+    });
+
+    [["rezac","Řezači",db.limits.rezac,false],["knihar","Knihařky",db.limits.knihar,true]].forEach(([r,txt,lim,hlasitMinimum])=>{
+      const pr=has(r).length, c=db.workers.filter(w=>w.team===team&&w.role===r).length;
+      if(c<lim) msgs.push(["warn",`${txt}: v týmu je zadáno jen ${c} (minimum ${lim}) – doplň lidi v záložce Lidé.`]);
+      else if(pr<lim) msgs.push(["bad",`${txt}: ${pr} z ${lim} – chybí ${c-pr} kvůli nepřítomnosti.`]);
+      else if(pr===lim&&hlasitMinimum&&c>lim) msgs.push(["warn",`${txt} na minimu (${pr}).`]);
+    });
+    [["serizovac","seřizovačů"],["knihar","knihařek"]].forEach(([r,txt])=>{
+      const c=db.workers.filter(w=>w.team===team&&w.role===r).length;
+      const pr=pritomni.filter(w=>w.team===team&&w.role===r&&!zd.has(w.id)).length;
+      if(!c) return;
+      const vypadek=Math.round((c-pr)/c*100);
+      if(vypadek>=db.limits.prah) msgs.push(["bad",`Chybí ${c-pr} z ${c} ${txt} (${vypadek} %).`]);
+    });
+    if(!has("dp").length && vsech("dp").length) msgs.push(["warn","Domácí práce neobsazena."]);
+    volneStroje.forEach(m=>msgs.push(["bad",`Stroj ${m.name} nemá seřizovače.`]));
+    db.machines.filter(m=>obsazene.includes(m)&&
+      naStrojich.filter(w=>(w.machines||[]).includes(m.id)).length===1 &&
+      lidi.filter(w=>w.role==="serizovac"&&(w.machines||[]).includes(m.id)).length>1)
+      .forEach(m=>msgs.push(["warn",`Stroj ${m.name} drží jediný seřizovač.`]));
+    if(!msgs.length) msgs.push(["ok","Směna je obsazená."]);
+  }
+  return {lidi,pritomni,msgs,volneStroje,obsazene,klid,rezim,zastup:zd,jinde,
+    zavada:msgs.some(m=>m[0]==="bad"), varovani:msgs.some(m=>m[0]==="warn")};
+}
+
+/* ---- kalendář ---- */
+function renderCal(){
+  $("#mesic").textContent=`${MES[kurzor.getUTCMonth()]} ${kurzor.getUTCFullYear()}`;
+  const prvni=new Date(Date.UTC(kurzor.getUTCFullYear(),kurzor.getUTCMonth(),1));
+  const start=monday(prvni);
+  const dnesS=d2s(new Date());
+  let h=["po","út","st","čt","pá","so","ne"].map(d=>`<div class="dow">${d}</div>`).join("");
+  for(let i=0;i<42;i++){
+    const d=new Date(start); d.setUTCDate(d.getUTCDate()+i); const ds=d2s(d);
+    if(i>=35 && d.getUTCMonth()!==kurzor.getUTCMonth()) break;
+    const sv=svatek(ds), mimo=d.getUTCMonth()!==kurzor.getUTCMonth(), klid=klidno(ds);
+    const cls=["cell"]; if(mimo)cls.push("mimo"); if(isWeekend(ds))cls.push("wknd"); if(sv)cls.push("svatek");
+    if(plan(ds))cls.push("prac");
+    if(ds===vybrany)cls.push("sel"); if(ds===dnesS)cls.push("dnes");
+    let telo="";
+    if(!mimo&&klid) telo=`<div class="volno">volno</div>`;
+    else if(!mimo){
+      telo=poradi(ds).map(t=>{
+        const st=stav(ds,t);
+        const bad=[], warn=[];
+        if(st.volneStroje.length) bad.push(`⚠ bez seřizovače: ${st.volneStroje.map(m=>m.name).join(", ")}`);
+        st.msgs.filter(m=>!m[1].startsWith("Stroj ")).forEach(m=>{
+          const txt=m[1].replace(/ Odstaveno:[^.]*\./,"").replace(/ Jeho stroje pokryjí ostatní\./,"")
+                        .replace(/ – doplň lidi v záložce Lidé\./,".");
+          if(m[0]==="bad") bad.push(txt); else if(m[0]==="warn") warn.push(txt);
+        });
+        const tip=st.msgs.filter(m=>m[0]!=="ok").map(m=>m[1]).join(" | ").replace(/"/g,"");
+        return `<div class="bar" title="${tip}">
+          <div class="barhead ${t}"><span>${smena(ds,t).toUpperCase()}</span><span>${st.pritomni.length}/${st.lidi.length}</span></div>
+          ${bad.length?`<div class="barnote bad">${bad.slice(0,3).map(r=>`<div>${r}</div>`).join("")}</div>`:""}
+          ${warn.length?`<div class="barnote warn">${warn.slice(0,2).map(r=>`<div>${r}</div>`).join("")}</div>`:""}
+        </div>`;
+      }).join("");
+    }
+    h+=`<div class="${cls.join(" ")}" onclick="vyber('${ds}')">
+      <span class="num">${d.getUTCDate()}</span>
+      ${sv?`<span class="svname">${sv}</span>`:""}
+      ${telo}</div>`;
+  }
+  $("#cal").innerHTML=h;
+}
+
+function planEditor(ds){
+  const p=plan(ds);
+  if(!p) return `<div class="msg warn">Volno – nikdo nepracuje.
+    <button class="act" style="margin-left:8px" onclick="planNew('${ds}')">Naplánovat práci</button></div>`;
+  return `<div class="planbox">
+    <div class="row"><b>Pracovní ${isWeekend(ds)?"víkend":"svátek"} – zaškrtni, kdo jde</b>
+      <button class="act ghost" onclick="planDel('${ds}')">Zrušit a nechat volno</button></div>
+    ${poradi(ds).map(t=>`<div style="margin-bottom:6px"><span class="tym ${t}">${TYM[t]} tým — ${smena(ds,t)}</span><br>
+      ${db.workers.filter(w=>w.team===t).map(w=>{
+        const a=absent(w.id,ds);
+        return `<label class="tag ${a?"off":""}" title="${a?a.type:""}"><input type="checkbox" ${(p[t]||[]).includes(w.id)?"checked":""}
+          onchange="planTog('${ds}','${t}','${w.id}')"> ${w.name} <i>${ROLE[w.role].toLowerCase()}</i></label>`;
+      }).join(" ")||"<i>v týmu nikdo není</i>"}</div>`).join("")}
+  </div>`;
+}
+window.planNew=ds=>{db.plan=db.plan||{}; db.plan[ds]={Z:[],M:[]}; save();};
+window.planDel=ds=>{delete db.plan[ds]; save();};
+window.planTog=(ds,t,wid)=>{const l=db.plan[ds][t]||[];
+  db.plan[ds][t]=l.includes(wid)?l.filter(x=>x!==wid):[...l,wid]; save();};
+
+function renderDen(){
+  const ds=vybrany; if(!ds) return;
+  const sv=svatek(ds);
+  const hlav=`<h2>${ds.split("-").reverse().join(".")} — ${DNY[s2d(ds).getUTCDay()]}${sv?` <span class="tag" style="background:var(--svat)">${sv}</span>`:""}</h2>`;
+  const editor=volno(ds)?planEditor(ds):"";
+  if(klidno(ds)){$("#denDetail").innerHTML=hlav+editor;return;}
+  $("#denDetail").innerHTML=hlav+editor+poradi(ds).map(t=>{
+    const st=stav(ds,t);
+    // zastupující seřizovač se v rozpisu ukáže na pozici mistra
+    const roleDnes=w=>(st.zastup.has(w.id)&&!st.jinde(w))?"mistr":w.role;
+    const alert=st.volneStroje.length
+      ? `<div class="alert">⚠ Neobsazené stroje: ${st.volneStroje.map(m=>`<span>${m.name}</span>`).join("")}</div>`:"";
+    const rows=Object.keys(ROLE).map(r=>{
+      const l=st.lidi.filter(w=>roleDnes(w)===r).concat(
+        r==="serizovac"?db.workers.filter(w=>w.team===t&&w.role===r&&st.jinde(w)&&!st.lidi.includes(w)):[]);
+      if(!l.length) return "";
+      return `<tr><th>${ROLE[r]}</th><td>${l.map(w=>{const a=absent(w.id,ds);
+        if(a) return `<span class="tag off" title="${a.type}">${w.name}</span>`;
+        if(st.zastup.has(w.id)&&!st.jinde(w))
+          return `<span class="tag zast">${w.name} <span class="tym ${w.team}">(${w.team===t?"seřizovač":"host"})</span> → za mistra ${wById(st.zastup.get(w.id)).name}</span>`;
+        if(st.jinde(w)) return `<span class="tag off">${w.name} → zastupuje jinde</span>`;
+        return `<span class="tag">${w.name}</span>`;
+      }).join(" ")}</td></tr>`;
+    }).join("");
+    return `<div class="shift ${t}">
+      <h3><span class="tym ${t}">${TYM[t]} tým</span> — ${smena(ds,t)}</h3>
+      ${alert}
+      ${st.msgs.filter(m=>!/^Stroj .* nemá seřizovače\.$/.test(m[1]))
+        .map(m=>`<div class="msg ${m[0]}">${m[1]}</div>`).join("")}
+      <table>${rows}</table>
+      <div style="margin-top:6px">Obsazené stroje: ${st.obsazene.map(m=>`<span class="tag">${m.name}</span>`).join(" ")||"—"}</div>
+    </div>`;
+  }).join("");
+}
+
+function renderLide(){
+  const ms=db.machines;
+  $("#lideTab").innerHTML=`<table><tr><th>Jméno</th><th>Role</th><th>Tým</th><th>Stroje</th><th>Zástup za mistra</th><th></th></tr>`+
+  db.workers.map(w=>`<tr class="rt${w.team}">
+    <td><b class="tym ${w.team}">${w.name}</b></td><td>${ROLE[w.role]}</td>
+    <td><select class="sel${w.team}" onchange="setF('${w.id}','team',this.value)">${["Z","M"].map(t=>`<option class="opt${t}" value="${t}" ${w.team===t?"selected":""}>${TYM[t]}</option>`).join("")}</select></td>
+    <td class="mach">${w.role==="serizovac"?ms.map(m=>`<label class="tag"><input type="checkbox" ${(w.machines||[]).includes(m.id)?"checked":""} onchange="tog('${w.id}','${m.id}')"> ${m.name}</label>`).join(" "):"—"}</td>
+    <td>${w.role==="serizovac"?(db.workers.filter(x=>x.role==="mistr")
+      .map(m=>`<label class="tag"><input type="checkbox" ${(w.zastup||[]).includes(m.id)?"checked":""} onchange="togZ('${w.id}','${m.id}')"> <span class="tym ${m.team}">${m.name}</span></label>`).join(" ")
+      ||"<i>není zadán žádný mistr</i>"):"—"}</td>
+    <td><button class="x" onclick="delW('${w.id}')">✕</button></td></tr>`).join("")+`</table>`;
+  $("#aW").innerHTML=db.workers.slice().sort((a,b)=>a.team===b.team?0:a.team==="Z"?-1:1)
+    .map(w=>`<option class="opt${w.team}" value="${w.id}">${TYM[w.team]==="Zelený"?"🟢":"🔵"} ${w.name} — ${ROLE[w.role]} (${TYM[w.team]})</option>`).join("");
+  barviSelect();
+}
+function barviSelect(){
+  const s=$("#aW"), w=wById(s.value);
+  s.className=w?"sel"+w.team:"";
+}
+
+function renderStroje(){
+  $("#strojeTab").innerHTML=`<table><tr><th>Stroj</th><th>Poznámka</th><th>Seřizovači</th><th></th></tr>`+
+  db.machines.map(m=>`<tr><td>${m.name}</td><td>${m.note||""}</td>
+    <td>${db.workers.filter(w=>(w.machines||[]).includes(m.id)).map(w=>`<span class="tag"><span class="tym ${w.team}">■</span> ${w.name}</span>`).join(" ")||'<span class="msg bad">nikdo</span>'}</td>
+    <td><button class="x" onclick="delM('${m.id}')">✕</button></td></tr>`).join("")+`</table>`;
+}
+function renderAbs(){
+  $("#absTab").innerHTML=`<table><tr><th>Pracovník</th><th>Typ</th><th>Od</th><th>Do</th><th>Výjimka</th><th></th></tr>`+
+  db.absences.slice().sort((a,b)=>a.from<b.from?-1:1).map(a=>{const w=wById(a.w);return `<tr class="${w?"rt"+w.team:""}">
+    <td><b class="tym ${w?w.team:""}">${w?w.name:"?"}</b></td><td>${a.type}</td><td>${a.from}</td><td>${a.to}</td>
+    <td>${a.forced?'<span class="tag">schváleno heslem</span>':""}</td>
+    <td><button class="x" onclick="delA('${a.id}')">✕</button></td></tr>`;}).join("")+`</table>`;
+}
+function render(){
+  $("#refMon").value=db.ref.monday; $("#refTeam").value=db.ref.team;
+  $("#minK").value=db.limits.knihar; $("#minR").value=db.limits.rezac;
+  $("#prah").value=db.limits.prah; $("#pin").value=db.pin;
+  renderCal(); renderDen(); renderLide(); renderStroje(); renderAbs();
+}
+
+window.vyber=ds=>{vybrany=ds;renderCal();renderDen();$("#denDetail").scrollIntoView({behavior:"smooth",block:"nearest"});};
+window.togZ=(id,mid)=>{const w=wById(id); w.zastup=w.zastup||[];
+  w.zastup=w.zastup.includes(mid)?w.zastup.filter(x=>x!==mid):[...w.zastup,mid]; save();};
+window.setF=(id,f,v)=>{Object.assign(wById(id),{[f]:v});save();};
+window.tog=(id,m)=>{const w=wById(id);w.machines=w.machines||[];
+  w.machines.includes(m)?w.machines=w.machines.filter(x=>x!==m):w.machines.push(m);save();};
+window.delW=id=>{if(!confirm("Odebrat pracovníka?"))return;
+  db.workers=db.workers.filter(w=>w.id!==id); db.absences=db.absences.filter(a=>a.w!==id); save();};
+window.delM=id=>{if(!confirm("Odebrat stroj?"))return; db.machines=db.machines.filter(m=>m.id!==id);
+  db.workers.forEach(w=>w.machines=(w.machines||[]).filter(x=>x!==id)); save();};
+window.delA=id=>{db.absences=db.absences.filter(a=>a.id!==id);save();};
+
+$("#prev").onclick=()=>{kurzor.setUTCMonth(kurzor.getUTCMonth()-1);renderCal();};
+$("#next").onclick=()=>{kurzor.setUTCMonth(kurzor.getUTCMonth()+1);renderCal();};
+$("#dnes").onclick=()=>{kurzor=new Date();vybrany=d2s(new Date());renderCal();renderDen();};
+
+$("#wAdd").onclick=()=>{const n=$("#wName").value.trim(); if(!n)return;
+  db.workers.push({id:uid(),name:n,role:$("#wRole").value,team:$("#wTeam").value,machines:[],deputyFor:null});
+  $("#wName").value=""; save();};
+$("#mAdd").onclick=()=>{const n=$("#mName").value.trim(); if(!n)return;
+  db.machines.push({id:uid(),name:n,note:$("#mNote").value.trim()}); $("#mName").value="";$("#mNote").value=""; save();};
+
+function porusiLimit(ds,team){
+  if(volno(ds)) return [];
+  const p=db.workers.filter(w=>w.team===team&&!absent(w.id,ds));
+  const vsichni=db.workers.filter(w=>w.team===team), out=[];
+  [["rezac","řezači",db.limits.rezac],["knihar","knihařky",db.limits.knihar]].forEach(([r,txt,lim])=>{
+    if(vsichni.filter(w=>w.role===r).length<lim) return; // limit nejde splnit ani při plné účasti
+    const c=p.filter(w=>w.role===r).length;
+    if(c<lim) out.push(`${ds}: ${txt} ${c}/${lim}`);
+  });
+  return out;
+}
+// sesbírá závady v rozsahu dní pro oba týmy: klíč "tým|směna|text" -> pole dat
+function zavadyVRozsahu(f,t){
+  const out=new Map();
+  for(let d=s2d(f);d<=s2d(t);d.setUTCDate(d.getUTCDate()+1)){
+    const ds=d2s(d); if(klidno(ds))continue;
+    ["Z","M"].forEach(team=>stav(ds,team).msgs.filter(m=>m[0]==="bad").forEach(m=>{
+      const k=`${team}|${smena(ds,team)}|${m[1]}`;
+      out.set(k,[...(out.get(k)||[]),ds]);
+    }));
+  }
+  return out;
+}
+const cesky=ds=>{const [y,m,d]=ds.split("-"); return `${+d}. ${+m}. ${y}`;};
+function useky(dny){ // spojí navazující pracovní dny do rozsahů (víkendy a svátky přeskočí)
+  const u=[]; let a=dny[0], b=dny[0];
+  for(let i=1;i<dny.length;i++){
+    let most=true;
+    for(let d=s2d(b);;){ d.setUTCDate(d.getUTCDate()+1); const ds=d2s(d);
+      if(ds===dny[i]) break;
+      if(!klidno(ds)){most=false;break;} }
+    if(most) b=dny[i]; else {u.push([a,b]); a=b=dny[i];}
+  }
+  u.push([a,b]); return u;
+}
+function vypisKolize(mapa){
+  const radky=[];
+  mapa.forEach((dny,k)=>{
+    const [team,sm,txt]=k.split("|");
+    useky(dny.sort()).forEach(([a,b])=>radky.push(
+      `<div class="kol"><span class="dot" style="background:var(--${team==="Z"?"zel":"mod"})"></span>
+        <b>${a===b?cesky(a):`${cesky(a)} – ${cesky(b)}`}</b> · ${sm} směna — ${txt}</div>`));
+  });
+  return radky.join("");
+}
+
+$("#aAdd").onclick=()=>{
+  const wid=$("#aW").value,f=$("#aFrom").value,t=$("#aTo").value||$("#aFrom").value;
+  if(!wid||!f){$("#aCheck").innerHTML='<div class="msg bad">Vyber pracovníka a datum.</div>';return;}
+  if(t<f){$("#aCheck").innerHTML='<div class="msg bad">Datum „do“ je před datem „od“.</div>';return;}
+  const p=wById(wid), zaznam={id:uid(),w:wid,from:f,to:t,type:$("#aType").value};
+  const pred=zavadyVRozsahu(f,t);                 // co už bylo špatně před zadáním
+  db.absences.push(zaznam);
+  const po=zavadyVRozsahu(f,t);
+  // nové závady = rozdíl proti stavu před zadáním
+  const nove=new Map();
+  po.forEach((dny,k)=>{const stare=pred.get(k)||[]; const rozdil=dny.filter(d=>!stare.includes(d));
+    if(rozdil.length) nove.set(k,rozdil);});
+
+  const tvrde=[];
+  for(let d=s2d(f);d<=s2d(t);d.setUTCDate(d.getUTCDate()+1)){
+    const ds=d2s(d); if(klidno(ds))continue;
+    tvrde.push(...porusiLimit(ds,p.team));
+  }
+  if(tvrde.length){
+    const zadane=prompt("Tato nepřítomnost shodí limit obsazení:\n\n"+tvrde.join("\n")+"\n\nPro uložení zadej heslo:");
+    if(zadane!==db.pin){
+      db.absences=db.absences.filter(a=>a.id!==zaznam.id); save();
+      $("#aCheck").innerHTML=`<div class="msg bad"><b>Neuloženo – limit obsazení.</b><br>${tvrde.join("<br>")}</div>`;
+      return;
+    }
+    zaznam.forced=true;
+  }
+  save();
+  $("#aCheck").innerHTML = nove.size
+    ? `<div class="msg ${zaznam.forced?"bad":"warn"}"><b>Uloženo${zaznam.forced?" na výjimku":""}. Vzniká tím:</b>${vypisKolize(nove)}</div>`
+    : '<div class="msg ok">Uloženo, žádná kolize.</div>';
+};
+
+$("#aW").onchange=barviSelect;
+$("#refSave").onclick=()=>{db.ref={monday:$("#refMon").value,team:$("#refTeam").value};save();};
+$("#limSave").onclick=()=>{db.limits={knihar:+$("#minK").value,rezac:+$("#minR").value,prah:+$("#prah").value||20};
+  db.pin=$("#pin").value||db.pin; save();};
+$("#exp").onclick=()=>{const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(db,null,1)],{type:"application/json"}));
+  a.download="obsazeni-smen.json";a.click();};
+$("#imp").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{db=JSON.parse(r.result);save();}catch(x){alert("Soubor se nepodařilo načíst.");}};r.readAsText(f);};
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on"));b.classList.add("on");
+  document.querySelectorAll("section").forEach(s=>s.classList.toggle("on",s.id===b.dataset.t));});
+load();
+</script>
